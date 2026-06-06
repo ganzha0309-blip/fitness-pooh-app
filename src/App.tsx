@@ -93,8 +93,10 @@ function App() {
   const [editingCode, setEditingCode] = useState<string | null>(null);
   const [draftTitle, setDraftTitle] = useState('');
   const [draftIcon, setDraftIcon] = useState('✅');
+  const [draftCaption, setDraftCaption] = useState('');
   const [newHabitTitle, setNewHabitTitle] = useState('');
   const [newHabitIcon, setNewHabitIcon] = useState('✅');
+  const [newHabitCaption, setNewHabitCaption] = useState('');
   const [habitAction, setHabitAction] = useState<string | null>(null);
 
   const tg = (window as any).Telegram?.WebApp;
@@ -209,7 +211,13 @@ function App() {
       const response = await fetch(`${API_URL}/habit/edit`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ initData: tg.initData, code, title: draftTitle.trim(), icon: draftIcon.trim() || '✅' }),
+        body: JSON.stringify({
+          initData: tg.initData,
+          code,
+          title: draftTitle.trim(),
+          icon: draftIcon.trim() || '✅',
+          caption: draftCaption.trim(),
+        }),
       });
       const result = await response.json();
       if (!response.ok || !result.ok) throw new Error(result.detail || 'Не удалось сохранить привычку.');
@@ -217,6 +225,7 @@ function App() {
       setEditingCode(null);
       setDraftTitle('');
       setDraftIcon('✅');
+      setDraftCaption('');
       setMessage('Привычка обновлена.');
     } catch (err) {
       setMessage(err instanceof Error ? err.message : 'Не удалось сохранить привычку.');
@@ -232,13 +241,19 @@ function App() {
       const response = await fetch(`${API_URL}/habit/add`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ initData: tg.initData, title: newHabitTitle.trim(), icon: newHabitIcon.trim() || '✅' }),
+        body: JSON.stringify({
+          initData: tg.initData,
+          title: newHabitTitle.trim(),
+          icon: newHabitIcon.trim() || '✅',
+          caption: newHabitCaption.trim(),
+        }),
       });
       const result = await response.json();
       if (!response.ok || !result.ok) throw new Error(result.detail || 'Лимит привычек для подписки достигнут.');
       setProfile(result.profile);
       setNewHabitTitle('');
       setNewHabitIcon('✅');
+      setNewHabitCaption('');
       setMessage('Привычка добавлена.');
     } catch (err) {
       setMessage(err instanceof Error ? err.message : 'Не удалось добавить привычку.');
@@ -356,7 +371,7 @@ function App() {
                   <span className="habit-icon">{habit.icon}</span>
                   <span>
                     <strong>{habit.title}</strong>
-                    <small>{habit.is_default ? 'Базовая' : 'Личная'} привычка</small>
+                    {habit.caption && <small>{habit.caption}</small>}
                   </span>
                   <b>{marking === habit.code ? '...' : done ? '✓' : '+10'}</b>
                 </button>
@@ -379,6 +394,13 @@ function App() {
                           maxLength={4}
                         />
                         <input value={draftTitle} onChange={(event) => setDraftTitle(event.target.value)} maxLength={32} />
+                        <input
+                          className="caption-input"
+                          value={draftCaption}
+                          onChange={(event) => setDraftCaption(event.target.value)}
+                          maxLength={48}
+                          placeholder="Описание"
+                        />
                         <button disabled={habitAction === habit.code} onClick={() => saveHabitTitle(habit.code)}>
                           Сохранить
                         </button>
@@ -391,6 +413,7 @@ function App() {
                             setEditingCode(habit.code);
                             setDraftTitle(habit.title);
                             setDraftIcon(habit.icon || '✅');
+                            setDraftCaption(habit.caption || '');
                           }}
                         >
                           Изменить
@@ -415,6 +438,14 @@ function App() {
                     placeholder={canAddHabit ? 'Новая привычка' : 'Лимит подписки достигнут'}
                     value={newHabitTitle}
                     onChange={(event) => setNewHabitTitle(event.target.value)}
+                  />
+                  <input
+                    className="caption-input"
+                    disabled={!canAddHabit}
+                    maxLength={48}
+                    placeholder="Описание"
+                    value={newHabitCaption}
+                    onChange={(event) => setNewHabitCaption(event.target.value)}
                   />
                   <button disabled={!canAddHabit || habitAction === 'add'} onClick={addHabit}>
                     Добавить

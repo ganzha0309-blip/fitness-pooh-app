@@ -306,6 +306,11 @@
   grid-template-columns: 46px 1fr auto;
 }
 
+.habit-editor.editing .caption-input,
+.add-habit-row .caption-input {
+  grid-column: 2 / -1;
+}
+
 .habit-editor span {
   min-width: 0;
   overflow: hidden;
