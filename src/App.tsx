@@ -4,8 +4,15 @@ import './App.css';
 const API_URL = 'https://fitness-pooh-api.onrender.com';
 
 type Tab = 'profile' | 'trainings';
-type HabitCode = 'water' | 'workout' | 'sleep';
 type Subscription = 'free' | 'base' | 'pro' | 'vip';
+
+type HabitItem = {
+  code: string;
+  icon: string;
+  title: string;
+  caption?: string;
+  is_default?: boolean;
+};
 
 type Profile = {
   name: string;
@@ -16,7 +23,10 @@ type Profile = {
   subscription_until?: string | null;
   last_action_date?: string | null;
   level: string;
-  habits?: Partial<Record<HabitCode, number>>;
+  habits?: Record<string, number>;
+  habit_items?: HabitItem[];
+  custom_habit_limit?: number;
+  custom_habit_count?: number;
 };
 
 type Training = {
@@ -30,10 +40,10 @@ type Training = {
   duration?: string;
 };
 
-const habits: Array<{ code: HabitCode; icon: string; title: string; caption: string }> = [
-  { code: 'water', icon: '💧', title: 'Вода', caption: '2 литра за день' },
-  { code: 'workout', icon: '🏋️', title: 'Тренировка', caption: 'Любая активность' },
-  { code: 'sleep', icon: '😴', title: 'Сон', caption: '7-8 часов' },
+const defaultHabits: HabitItem[] = [
+  { code: 'water', icon: '💧', title: 'Вода', caption: '2 литра за день', is_default: true },
+  { code: 'workout', icon: '🏋️', title: 'Тренировка', caption: 'Любая активность', is_default: true },
+  { code: 'sleep', icon: '😴', title: 'Сон', caption: '7-8 часов', is_default: true },
 ];
 
 const subscriptionRank: Record<string, number> = {
@@ -77,19 +87,44 @@ function App() {
   const [trainings, setTrainings] = useState<Training[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [marking, setMarking] = useState<HabitCode | null>(null);
+  const [marking, setMarking] = useState<string | null>(null);
   const [message, setMessage] = useState('');
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [editingCode, setEditingCode] = useState<string | null>(null);
+  const [draftTitle, setDraftTitle] = useState('');
+  const [newHabitTitle, setNewHabitTitle] = useState('');
+  const [habitAction, setHabitAction] = useState<string | null>(null);
 
   const tg = (window as any).Telegram?.WebApp;
+  const habitItems = profile?.habit_items?.length ? profile.habit_items : defaultHabits;
   const todayHabits = profile?.last_action_date === todayIso() ? profile?.habits || {} : {};
   const subscription = normalizeSubscription(profile?.subscription);
+  const customHabitLimit = profile?.custom_habit_limit ?? 0;
+  const customHabitCount = profile?.custom_habit_count ?? habitItems.filter((habit) => !habit.is_default).length;
+  const canAddHabit = customHabitCount < customHabitLimit;
   const nextXp = nextLevelXp(profile?.xp || 0);
   const levelProgress = Math.min(100, Math.round(((profile?.xp || 0) % 100) || (profile?.xp ? 100 : 0)));
 
   const completedHabits = useMemo(
-    () => habits.filter((habit) => todayHabits[habit.code]).length,
-    [todayHabits],
+    () => habitItems.filter((habit) => todayHabits[habit.code]).length,
+    [habitItems, todayHabits],
   );
+
+  const loadProfile = async (initData: string) => {
+    const response = await fetch(`${API_URL}/auth`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ initData }),
+    });
+
+    if (!response.ok) {
+      throw new Error('Не удалось загрузить профиль.');
+    }
+
+    const data = await response.json();
+    setProfile(data);
+    return data;
+  };
 
   useEffect(() => {
     tg?.ready?.();
@@ -126,23 +161,7 @@ function App() {
     init();
   }, [tg]);
 
-  const loadProfile = async (initData: string) => {
-    const response = await fetch(`${API_URL}/auth`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ initData }),
-    });
-
-    if (!response.ok) {
-      throw new Error('Не удалось загрузить профиль.');
-    }
-
-    const data = await response.json();
-    setProfile(data);
-    return data;
-  };
-
-  const handleHabit = async (habit: HabitCode) => {
+  const handleHabit = async (habit: string) => {
     if (!profile || !tg?.initData) return;
 
     setMarking(habit);
@@ -165,6 +184,7 @@ function App() {
                 level: result.level,
                 last_action_date: todayIso(),
                 habits: result.habits || { ...(prev.last_action_date === todayIso() ? prev.habits : {}), [habit]: 1 },
+                habit_items: result.habit_items || prev.habit_items,
               }
             : prev,
         );
@@ -177,6 +197,69 @@ function App() {
       setMessage('Не удалось связаться с сервером.');
     } finally {
       setMarking(null);
+    }
+  };
+
+  const saveHabitTitle = async (code: string) => {
+    if (!tg?.initData || draftTitle.trim().length < 2) return;
+    setHabitAction(code);
+    try {
+      const response = await fetch(`${API_URL}/habit/edit`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ initData: tg.initData, code, title: draftTitle.trim() }),
+      });
+      const result = await response.json();
+      if (!response.ok || !result.ok) throw new Error(result.detail || 'Не удалось сохранить привычку.');
+      setProfile(result.profile);
+      setEditingCode(null);
+      setDraftTitle('');
+      setMessage('Привычка обновлена.');
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : 'Не удалось сохранить привычку.');
+    } finally {
+      setHabitAction(null);
+    }
+  };
+
+  const addHabit = async () => {
+    if (!tg?.initData || newHabitTitle.trim().length < 2 || !canAddHabit) return;
+    setHabitAction('add');
+    try {
+      const response = await fetch(`${API_URL}/habit/add`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ initData: tg.initData, title: newHabitTitle.trim(), icon: '✅' }),
+      });
+      const result = await response.json();
+      if (!response.ok || !result.ok) throw new Error(result.detail || 'Лимит привычек для подписки достигнут.');
+      setProfile(result.profile);
+      setNewHabitTitle('');
+      setMessage('Привычка добавлена.');
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : 'Не удалось добавить привычку.');
+    } finally {
+      setHabitAction(null);
+    }
+  };
+
+  const deleteHabit = async (code: string) => {
+    if (!tg?.initData) return;
+    setHabitAction(code);
+    try {
+      const response = await fetch(`${API_URL}/habit/delete`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ initData: tg.initData, code }),
+      });
+      const result = await response.json();
+      if (!response.ok || !result.ok) throw new Error(result.detail || 'Не удалось удалить привычку.');
+      setProfile(result.profile);
+      setMessage('Привычка удалена.');
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : 'Не удалось удалить привычку.');
+    } finally {
+      setHabitAction(null);
     }
   };
 
@@ -231,7 +314,9 @@ function App() {
             </article>
             <article>
               <span>Сегодня</span>
-              <strong>{completedHabits}/3</strong>
+              <strong>
+                {completedHabits}/{habitItems.length}
+              </strong>
             </article>
           </div>
 
@@ -251,26 +336,75 @@ function App() {
           <section className="habit-list">
             <div className="section-title">
               <h3>Привычки дня</h3>
-              <span>{todayIso()}</span>
+              <button className="ghost-button" onClick={() => setSettingsOpen((value) => !value)}>
+                {settingsOpen ? 'Готово' : 'Настроить'}
+              </button>
             </div>
-            {habits.map((habit) => {
+            {habitItems.map((habit) => {
               const done = Boolean(todayHabits[habit.code]);
               return (
                 <button
                   className={`habit-item ${done ? 'done' : ''}`}
-                  disabled={done || Boolean(marking)}
+                  disabled={done || Boolean(marking) || settingsOpen}
                   key={habit.code}
                   onClick={() => handleHabit(habit.code)}
                 >
                   <span className="habit-icon">{habit.icon}</span>
                   <span>
                     <strong>{habit.title}</strong>
-                    <small>{habit.caption}</small>
+                    <small>{habit.caption || (habit.is_default ? 'Базовая привычка' : 'Кастомная привычка')}</small>
                   </span>
                   <b>{marking === habit.code ? '...' : done ? '✓' : '+10'}</b>
                 </button>
               );
             })}
+
+            {settingsOpen && (
+              <div className="habit-settings">
+                <p>
+                  Дополнительные привычки: {customHabitCount}/{customHabitLimit}
+                </p>
+                {habitItems.map((habit) => (
+                  <div className="habit-editor" key={habit.code}>
+                    {editingCode === habit.code ? (
+                      <>
+                        <input value={draftTitle} onChange={(event) => setDraftTitle(event.target.value)} maxLength={32} />
+                        <button disabled={habitAction === habit.code} onClick={() => saveHabitTitle(habit.code)}>
+                          Сохранить
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <span>{habit.icon} {habit.title}</span>
+                        <button
+                          onClick={() => {
+                            setEditingCode(habit.code);
+                            setDraftTitle(habit.title);
+                          }}
+                        >
+                          Изменить
+                        </button>
+                        {!habit.is_default && <button onClick={() => deleteHabit(habit.code)}>Удалить</button>}
+                      </>
+                    )}
+                  </div>
+                ))}
+
+                <div className="add-habit-row">
+                  <input
+                    disabled={!canAddHabit}
+                    maxLength={32}
+                    placeholder={canAddHabit ? 'Новая привычка' : 'Лимит подписки достигнут'}
+                    value={newHabitTitle}
+                    onChange={(event) => setNewHabitTitle(event.target.value)}
+                  />
+                  <button disabled={!canAddHabit || habitAction === 'add'} onClick={addHabit}>
+                    Добавить
+                  </button>
+                </div>
+                {!canAddHabit && <small>Free может менять базовые привычки. Base +1, PRO +2, VIP +3.</small>}
+              </div>
+            )}
             {message && <p className="toast-message">{message}</p>}
           </section>
         </section>
