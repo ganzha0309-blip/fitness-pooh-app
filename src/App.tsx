@@ -51,7 +51,11 @@ const subscriptionLabels: Record<string, string> = {
 };
 
 function todayIso() {
-  return new Date().toISOString().slice(0, 10);
+  const date = new Date();
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
 function normalizeSubscription(value?: string) {
@@ -106,18 +110,7 @@ function App() {
           return;
         }
 
-        const response = await fetch(`${API_URL}/auth`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ initData }),
-        });
-
-        if (!response.ok) {
-          throw new Error('Не удалось загрузить профиль.');
-        }
-
-        const data = await response.json();
-        setProfile(data);
+        await loadProfile(initData);
 
         const trainingsResponse = await fetch(`${API_URL}/trainings`);
         if (trainingsResponse.ok) {
@@ -132,6 +125,22 @@ function App() {
 
     init();
   }, [tg]);
+
+  const loadProfile = async (initData: string) => {
+    const response = await fetch(`${API_URL}/auth`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ initData }),
+    });
+
+    if (!response.ok) {
+      throw new Error('Не удалось загрузить профиль.');
+    }
+
+    const data = await response.json();
+    setProfile(data);
+    return data;
+  };
 
   const handleHabit = async (habit: HabitCode) => {
     if (!profile || !tg?.initData) return;
@@ -155,12 +164,13 @@ function App() {
                 streak: result.new_streak,
                 level: result.level,
                 last_action_date: todayIso(),
-                habits: { ...(prev.last_action_date === todayIso() ? prev.habits : {}), [habit]: 1 },
+                habits: result.habits || { ...(prev.last_action_date === todayIso() ? prev.habits : {}), [habit]: 1 },
               }
             : prev,
         );
         setMessage(result.message || '+10 XP в копилку режима.');
       } else {
+        await loadProfile(tg.initData);
         setMessage(result.message || 'Эта привычка уже отмечена сегодня.');
       }
     } catch {
