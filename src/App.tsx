@@ -92,7 +92,9 @@ function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [editingCode, setEditingCode] = useState<string | null>(null);
   const [draftTitle, setDraftTitle] = useState('');
+  const [draftIcon, setDraftIcon] = useState('✅');
   const [newHabitTitle, setNewHabitTitle] = useState('');
+  const [newHabitIcon, setNewHabitIcon] = useState('✅');
   const [habitAction, setHabitAction] = useState<string | null>(null);
 
   const tg = (window as any).Telegram?.WebApp;
@@ -207,13 +209,14 @@ function App() {
       const response = await fetch(`${API_URL}/habit/edit`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ initData: tg.initData, code, title: draftTitle.trim() }),
+        body: JSON.stringify({ initData: tg.initData, code, title: draftTitle.trim(), icon: draftIcon.trim() || '✅' }),
       });
       const result = await response.json();
       if (!response.ok || !result.ok) throw new Error(result.detail || 'Не удалось сохранить привычку.');
       setProfile(result.profile);
       setEditingCode(null);
       setDraftTitle('');
+      setDraftIcon('✅');
       setMessage('Привычка обновлена.');
     } catch (err) {
       setMessage(err instanceof Error ? err.message : 'Не удалось сохранить привычку.');
@@ -229,12 +232,13 @@ function App() {
       const response = await fetch(`${API_URL}/habit/add`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ initData: tg.initData, title: newHabitTitle.trim(), icon: '✅' }),
+        body: JSON.stringify({ initData: tg.initData, title: newHabitTitle.trim(), icon: newHabitIcon.trim() || '✅' }),
       });
       const result = await response.json();
       if (!response.ok || !result.ok) throw new Error(result.detail || 'Лимит привычек для подписки достигнут.');
       setProfile(result.profile);
       setNewHabitTitle('');
+      setNewHabitIcon('✅');
       setMessage('Привычка добавлена.');
     } catch (err) {
       setMessage(err instanceof Error ? err.message : 'Не удалось добавить привычку.');
@@ -352,7 +356,7 @@ function App() {
                   <span className="habit-icon">{habit.icon}</span>
                   <span>
                     <strong>{habit.title}</strong>
-                    <small>{habit.caption || (habit.is_default ? 'Базовая привычка' : 'Кастомная привычка')}</small>
+                    <small>{habit.is_default ? 'Базовая' : 'Личная'} привычка</small>
                   </span>
                   <b>{marking === habit.code ? '...' : done ? '✓' : '+10'}</b>
                 </button>
@@ -365,9 +369,15 @@ function App() {
                   Дополнительные привычки: {customHabitCount}/{customHabitLimit}
                 </p>
                 {habitItems.map((habit) => (
-                  <div className="habit-editor" key={habit.code}>
+                  <div className={`habit-editor ${editingCode === habit.code ? 'editing' : ''}`} key={habit.code}>
                     {editingCode === habit.code ? (
                       <>
+                        <input
+                          className="emoji-input"
+                          value={draftIcon}
+                          onChange={(event) => setDraftIcon(event.target.value.slice(0, 4))}
+                          maxLength={4}
+                        />
                         <input value={draftTitle} onChange={(event) => setDraftTitle(event.target.value)} maxLength={32} />
                         <button disabled={habitAction === habit.code} onClick={() => saveHabitTitle(habit.code)}>
                           Сохранить
@@ -380,6 +390,7 @@ function App() {
                           onClick={() => {
                             setEditingCode(habit.code);
                             setDraftTitle(habit.title);
+                            setDraftIcon(habit.icon || '✅');
                           }}
                         >
                           Изменить
@@ -391,6 +402,13 @@ function App() {
                 ))}
 
                 <div className="add-habit-row">
+                  <input
+                    className="emoji-input"
+                    disabled={!canAddHabit}
+                    maxLength={4}
+                    value={newHabitIcon}
+                    onChange={(event) => setNewHabitIcon(event.target.value.slice(0, 4))}
+                  />
                   <input
                     disabled={!canAddHabit}
                     maxLength={32}
