@@ -40,6 +40,25 @@ type Training = {
   duration?: string;
 };
 
+type LeaderboardUser = {
+  place: number;
+  name: string;
+  username?: string | null;
+  xp: number;
+  streak: number;
+  level: string;
+};
+
+type LevelInfo = {
+  xp: number;
+  title: string;
+};
+
+type Leaderboard = {
+  top: LeaderboardUser[];
+  levels: LevelInfo[];
+};
+
 const defaultHabits: HabitItem[] = [
   { code: 'water', icon: '💧', title: 'Вода', caption: '2 литра за день', is_default: true },
   { code: 'workout', icon: '🏋️', title: 'Тренировка', caption: 'Любая активность', is_default: true },
@@ -98,6 +117,9 @@ function App() {
   const [newHabitIcon, setNewHabitIcon] = useState('✅');
   const [newHabitCaption, setNewHabitCaption] = useState('');
   const [habitAction, setHabitAction] = useState<string | null>(null);
+  const [leaderboard, setLeaderboard] = useState<Leaderboard | null>(null);
+  const [leaderboardOpen, setLeaderboardOpen] = useState(false);
+  const [leaderboardLoading, setLeaderboardLoading] = useState(false);
 
   const tg = (window as any).Telegram?.WebApp;
   const habitItems = profile?.habit_items?.length ? profile.habit_items : defaultHabits;
@@ -282,6 +304,22 @@ function App() {
     }
   };
 
+  const openLeaderboard = async () => {
+    setLeaderboardOpen(true);
+    if (leaderboard) return;
+
+    setLeaderboardLoading(true);
+    try {
+      const response = await fetch(`${API_URL}/leaderboard`);
+      if (!response.ok) throw new Error('Не удалось загрузить топ.');
+      setLeaderboard(await response.json());
+    } catch {
+      setMessage('Не удалось загрузить топ по XP.');
+    } finally {
+      setLeaderboardLoading(false);
+    }
+  };
+
   if (loading) {
     return (
       <main className="app-shell center-state">
@@ -345,6 +383,9 @@ function App() {
                 <span>Уровень</span>
                 <strong>{profile.level}</strong>
               </div>
+              <button className="top-button" onClick={openLeaderboard}>Топ</button>
+            </div>
+            <div className="level-subrow">
               <span>{nextXp - profile.xp} XP до цели</span>
             </div>
             <div className="progress-track">
@@ -484,6 +525,47 @@ function App() {
                 </article>
               );
             })}
+          </div>
+        </section>
+      )}
+
+      {leaderboardOpen && (
+        <section className="top-overlay">
+          <div className="top-sheet">
+            <div className="section-title">
+              <h3>Топ Fitness Pooh</h3>
+              <button className="ghost-button" onClick={() => setLeaderboardOpen(false)}>Закрыть</button>
+            </div>
+
+            {leaderboardLoading ? (
+              <p className="top-empty">Загружаем рейтинг...</p>
+            ) : (
+              <>
+                <div className="top-list">
+                  {(leaderboard?.top || []).map((user) => (
+                    <article className="top-user" key={`${user.place}-${user.name}`}>
+                      <span className="top-place">#{user.place}</span>
+                      <div>
+                        <strong>{user.name}</strong>
+                        <small>{user.level} · {user.streak} дн.</small>
+                      </div>
+                      <b>{user.xp} XP</b>
+                    </article>
+                  ))}
+                  {!leaderboard?.top?.length && <p className="top-empty">Пока нет участников рейтинга.</p>}
+                </div>
+
+                <div className="levels-list">
+                  <h3>Уровни</h3>
+                  {(leaderboard?.levels || []).map((level) => (
+                    <div className="level-item" key={level.xp}>
+                      <span>{level.title}</span>
+                      <b>{level.xp} XP</b>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
           </div>
         </section>
       )}
