@@ -476,15 +476,17 @@
   z-index: 20;
   display: grid;
   align-items: end;
+  justify-items: center;
   padding: 18px 14px;
   background: rgba(3, 2, 6, 0.68);
   backdrop-filter: blur(10px);
 }
 
 .top-sheet {
-  width: min(520px, 100%);
+  width: 100%;
+  max-width: 520px;
   max-height: min(82svh, 720px);
-  margin: 0 auto;
+  margin: 0;
   overflow: auto;
   padding: 16px;
   border: 1px solid rgba(255, 255, 255, 0.12);
