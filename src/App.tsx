@@ -3,7 +3,7 @@ import './App.css';
 
 const API_URL = 'https://fitness-pooh-api.onrender.com';
 
-type Tab = 'profile' | 'trainings';
+type Tab = 'profile' | 'progress' | 'trainings';
 type Subscription = 'free' | 'base' | 'pro' | 'vip';
 
 type HabitItem = {
@@ -57,6 +57,32 @@ type LevelInfo = {
 type Leaderboard = {
   top: LeaderboardUser[];
   levels: LevelInfo[];
+};
+
+type ProgressEntry = {
+  id: string;
+  date: string;
+  weight?: number | null;
+  waist?: number | null;
+  chest?: number | null;
+  arm?: number | null;
+  thigh?: number | null;
+  note?: string;
+};
+
+type ProgressData = {
+  entries: ProgressEntry[];
+  latest?: ProgressEntry | null;
+  changes?: Record<string, number>;
+};
+
+type ProgressForm = {
+  weight: string;
+  waist: string;
+  chest: string;
+  arm: string;
+  thigh: string;
+  note: string;
 };
 
 const defaultHabits: HabitItem[] = [
@@ -120,6 +146,17 @@ function App() {
   const [leaderboard, setLeaderboard] = useState<Leaderboard | null>(null);
   const [leaderboardOpen, setLeaderboardOpen] = useState(false);
   const [leaderboardLoading, setLeaderboardLoading] = useState(false);
+  const [progress, setProgress] = useState<ProgressData | null>(null);
+  const [progressLoading, setProgressLoading] = useState(false);
+  const [progressSaving, setProgressSaving] = useState(false);
+  const [progressForm, setProgressForm] = useState<ProgressForm>({
+    weight: '',
+    waist: '',
+    chest: '',
+    arm: '',
+    thigh: '',
+    note: '',
+  });
 
   const tg = (window as any).Telegram?.WebApp;
   const habitItems = profile?.habit_items?.length ? profile.habit_items : defaultHabits;
@@ -320,6 +357,60 @@ function App() {
     }
   };
 
+  const loadProgress = async () => {
+    if (!tg?.initData) return;
+    setProgressLoading(true);
+    try {
+      const response = await fetch(`${API_URL}/progress`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ initData: tg.initData }),
+      });
+      if (!response.ok) throw new Error('Не удалось загрузить прогресс.');
+      setProgress(await response.json());
+    } catch {
+      setMessage('Не удалось загрузить прогресс.');
+    } finally {
+      setProgressLoading(false);
+    }
+  };
+
+  const saveProgress = async () => {
+    if (!tg?.initData) return;
+    setProgressSaving(true);
+    try {
+      const body = {
+        initData: tg.initData,
+        weight: progressForm.weight ? Number(progressForm.weight) : null,
+        waist: progressForm.waist ? Number(progressForm.waist) : null,
+        chest: progressForm.chest ? Number(progressForm.chest) : null,
+        arm: progressForm.arm ? Number(progressForm.arm) : null,
+        thigh: progressForm.thigh ? Number(progressForm.thigh) : null,
+        note: progressForm.note,
+      };
+      const response = await fetch(`${API_URL}/progress/add`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const result = await response.json();
+      if (!response.ok || !result.ok) throw new Error(result.detail || 'Не удалось сохранить замер.');
+      setProgress({ entries: result.entries, latest: result.latest, changes: result.changes });
+      setProgressForm({ weight: '', waist: '', chest: '', arm: '', thigh: '', note: '' });
+      setMessage('Замер сохранен.');
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : 'Не удалось сохранить замер.');
+    } finally {
+      setProgressSaving(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'progress' && !progress) {
+      loadProgress();
+    }
+  }, [activeTab, progress]);
+
   if (loading) {
     return (
       <main className="app-shell center-state">
@@ -344,7 +435,7 @@ function App() {
       <section className="top-panel">
         <div>
           <p className="eyebrow">Fitness Pooh</p>
-          <h1>{activeTab === 'profile' ? 'Профиль' : 'Тренировки'}</h1>
+          <h1>{activeTab === 'profile' ? 'Профиль' : activeTab === 'progress' ? 'Прогресс' : 'Тренировки'}</h1>
         </div>
         <div className="avatar">{profile.name?.slice(0, 1) || 'P'}</div>
       </section>
@@ -500,6 +591,113 @@ function App() {
         </section>
       )}
 
+      {activeTab === 'progress' && (
+        <section className="screen">
+          <div className="training-banner">
+            <p className="eyebrow">Замеры тела</p>
+            <h2>Следи за массой и объемами</h2>
+            <p>Добавляй замеры раз в неделю, чтобы видеть реальный прогресс, а не гадать по ощущениям.</p>
+          </div>
+
+          <section className="progress-card">
+            <div className="section-title">
+              <h3>Последний замер</h3>
+              <button className="ghost-button" onClick={loadProgress}>Обновить</button>
+            </div>
+            {progressLoading ? (
+              <p className="top-empty">Загружаем прогресс...</p>
+            ) : progress?.latest ? (
+              <div className="measure-grid">
+                <article>
+                  <span>Вес</span>
+                  <strong>{progress.latest.weight ?? '-'} кг</strong>
+                </article>
+                <article>
+                  <span>Талия</span>
+                  <strong>{progress.latest.waist ?? '-'} см</strong>
+                </article>
+                <article>
+                  <span>Грудь</span>
+                  <strong>{progress.latest.chest ?? '-'} см</strong>
+                </article>
+                <article>
+                  <span>Рука</span>
+                  <strong>{progress.latest.arm ?? '-'} см</strong>
+                </article>
+                <article>
+                  <span>Бедро</span>
+                  <strong>{progress.latest.thigh ?? '-'} см</strong>
+                </article>
+                <article>
+                  <span>Дата</span>
+                  <strong>{progress.latest.date}</strong>
+                </article>
+              </div>
+            ) : (
+              <p className="top-empty">Пока нет замеров. Добавь первый ниже.</p>
+            )}
+          </section>
+
+          <section className="progress-card">
+            <div className="section-title">
+              <h3>Новый замер</h3>
+            </div>
+            <div className="progress-form">
+              {[
+                ['weight', 'Вес, кг'],
+                ['waist', 'Талия, см'],
+                ['chest', 'Грудь, см'],
+                ['arm', 'Рука, см'],
+                ['thigh', 'Бедро, см'],
+              ].map(([key, label]) => (
+                <label key={key}>
+                  <span>{label}</span>
+                  <input
+                    inputMode="decimal"
+                    type="number"
+                    step="0.1"
+                    value={progressForm[key as keyof ProgressForm]}
+                    onChange={(event) => setProgressForm((prev) => ({ ...prev, [key]: event.target.value }))}
+                  />
+                </label>
+              ))}
+              <label className="progress-note">
+                <span>Комментарий</span>
+                <input
+                  maxLength={160}
+                  value={progressForm.note}
+                  onChange={(event) => setProgressForm((prev) => ({ ...prev, note: event.target.value }))}
+                  placeholder="Например: после тренировки, утром натощак"
+                />
+              </label>
+              <button className="save-progress-button" disabled={progressSaving} onClick={saveProgress}>
+                {progressSaving ? 'Сохраняем...' : 'Сохранить замер'}
+              </button>
+            </div>
+            {message && <p className="toast-message">{message}</p>}
+          </section>
+
+          <section className="progress-card">
+            <div className="section-title">
+              <h3>История</h3>
+              <span>{progress?.entries?.length || 0}</span>
+            </div>
+            <div className="progress-history">
+              {(progress?.entries || []).slice(0, 8).map((entry) => (
+                <article key={entry.id}>
+                  <div>
+                    <strong>{entry.date}</strong>
+                    {entry.note && <small>{entry.note}</small>}
+                  </div>
+                  <span>{entry.weight ? `${entry.weight} кг` : 'без веса'}</span>
+                </article>
+              ))}
+              {!progress?.entries?.length && <p className="top-empty">История появится после первого замера.</p>}
+            </div>
+          </section>
+        </section>
+      )}
+
       {activeTab === 'trainings' && (
         <section className="screen">
           <div className="training-banner">
@@ -574,6 +772,10 @@ function App() {
         <button className={activeTab === 'profile' ? 'active' : ''} onClick={() => setActiveTab('profile')}>
           <span>👤</span>
           Профиль
+        </button>
+        <button className={activeTab === 'progress' ? 'active' : ''} onClick={() => setActiveTab('progress')}>
+          <span>📈</span>
+          Прогресс
         </button>
         <button className={activeTab === 'trainings' ? 'active' : ''} onClick={() => setActiveTab('trainings')}>
           <span>🏋️</span>
