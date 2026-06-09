@@ -235,14 +235,26 @@ function App() {
   );
 
   const loadProfile = async (initData: string) => {
-    const response = await fetch(`${API_URL}/auth`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ initData }),
-    });
+    let response: Response;
+    try {
+      response = await fetch(`${API_URL}/auth`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ initData }),
+      });
+    } catch {
+      throw new Error(`API недоступен: ${API_URL}`);
+    }
 
     if (!response.ok) {
-      throw new Error('Не удалось загрузить профиль.');
+      let detail = '';
+      try {
+        const data = await response.json();
+        detail = data.detail ? ` ${data.detail}` : '';
+      } catch {
+        detail = '';
+      }
+      throw new Error(`Не удалось загрузить профиль. HTTP ${response.status}.${detail}`);
     }
 
     const data = await response.json();
