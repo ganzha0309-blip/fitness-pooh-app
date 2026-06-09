@@ -22,10 +22,10 @@ import {
   nextLevelXp,
   normalizeSubscription,
   progressMetrics,
-  subscriptionLabels,
   todayIso,
 } from './constants';
 import { ChallengesScreen } from './screens/ChallengesScreen';
+import { ProfileScreen } from './screens/ProfileScreen';
 import { TrainingsScreen } from './screens/TrainingsScreen';
 import type {
   Challenge,
@@ -365,154 +365,42 @@ function App() {
       />
 
       {activeTab === 'profile' && (
-        <section className="screen">
-          <div className="profile-hero">
-            <div>
-              <p className="muted">Привет,</p>
-              <h2>{profile.name}</h2>
-              {profile.username && <p className="muted">@{profile.username}</p>}
-            </div>
-            <span className="subscription-pill">{subscriptionLabels[subscription]}</span>
-          </div>
-
-          <div className="stats-grid">
-            <article>
-              <span>XP</span>
-              <strong>{profile.xp}</strong>
-            </article>
-            <article>
-              <span>Streak</span>
-              <strong>{profile.streak} дн.</strong>
-            </article>
-            <article>
-              <span>Сегодня</span>
-              <strong>
-                {completedHabits}/{habitItems.length}
-              </strong>
-            </article>
-          </div>
-
-          <section className="level-card">
-            <div className="level-row">
-              <div>
-                <span>Уровень</span>
-                <strong>{profile.level}</strong>
-              </div>
-              <button className="top-button" onClick={openLeaderboard}>Топ</button>
-            </div>
-            <div className="level-subrow">
-              <span>{nextXp - profile.xp} XP до цели</span>
-            </div>
-            <div className="progress-track">
-              <div style={{ width: `${levelProgress}%` }} />
-            </div>
-          </section>
-
-          <section className="habit-list">
-            <div className="section-title">
-              <h3>Привычки дня</h3>
-              <button className="ghost-button" onClick={() => setSettingsOpen((value) => !value)}>
-                {settingsOpen ? 'Готово' : 'Настроить'}
-              </button>
-            </div>
-            {habitItems.map((habit) => {
-              const done = Boolean(todayHabits[habit.code]);
-              return (
-                <button
-                  className={`habit-item ${done ? 'done' : ''}`}
-                  disabled={done || Boolean(marking) || settingsOpen}
-                  key={habit.code}
-                  onClick={() => handleHabit(habit.code)}
-                >
-                  <span className="habit-icon">{habit.icon}</span>
-                  <span>
-                    <strong>{habit.title}</strong>
-                    {habit.caption && <small>{habit.caption}</small>}
-                  </span>
-                  <b>{marking === habit.code ? '...' : done ? '✓' : '+10'}</b>
-                </button>
-              );
-            })}
-
-            {settingsOpen && (
-              <div className="habit-settings">
-                <p>
-                  Дополнительные привычки: {customHabitCount}/{customHabitLimit}
-                </p>
-                {habitItems.map((habit) => (
-                  <div className={`habit-editor ${editingCode === habit.code ? 'editing' : ''}`} key={habit.code}>
-                    {editingCode === habit.code ? (
-                      <>
-                        <input
-                          className="emoji-input"
-                          value={draftIcon}
-                          onChange={(event) => setDraftIcon(event.target.value.slice(0, 4))}
-                          maxLength={4}
-                        />
-                        <input value={draftTitle} onChange={(event) => setDraftTitle(event.target.value)} maxLength={32} />
-                        <input
-                          className="caption-input"
-                          value={draftCaption}
-                          onChange={(event) => setDraftCaption(event.target.value)}
-                          maxLength={48}
-                          placeholder="Описание"
-                        />
-                        <button disabled={habitAction === habit.code} onClick={() => saveHabitTitle(habit.code)}>
-                          Сохранить
-                        </button>
-                      </>
-                    ) : (
-                      <>
-                        <span>{habit.icon} {habit.title}</span>
-                        <button
-                          onClick={() => {
-                            setEditingCode(habit.code);
-                            setDraftTitle(habit.title);
-                            setDraftIcon(habit.icon || '✅');
-                            setDraftCaption(habit.caption || '');
-                          }}
-                        >
-                          Изменить
-                        </button>
-                        {!habit.is_default && <button onClick={() => deleteHabit(habit.code)}>Удалить</button>}
-                      </>
-                    )}
-                  </div>
-                ))}
-
-                <div className="add-habit-row">
-                  <input
-                    className="emoji-input"
-                    disabled={!canAddHabit}
-                    maxLength={4}
-                    value={newHabitIcon}
-                    onChange={(event) => setNewHabitIcon(event.target.value.slice(0, 4))}
-                  />
-                  <input
-                    disabled={!canAddHabit}
-                    maxLength={32}
-                    placeholder={canAddHabit ? 'Новая привычка' : 'Лимит подписки достигнут'}
-                    value={newHabitTitle}
-                    onChange={(event) => setNewHabitTitle(event.target.value)}
-                  />
-                  <input
-                    className="caption-input"
-                    disabled={!canAddHabit}
-                    maxLength={48}
-                    placeholder="Описание"
-                    value={newHabitCaption}
-                    onChange={(event) => setNewHabitCaption(event.target.value)}
-                  />
-                  <button disabled={!canAddHabit || habitAction === 'add'} onClick={addHabit}>
-                    Добавить
-                  </button>
-                </div>
-                {!canAddHabit && <small>Free может менять базовые привычки. Base +1, PRO +2, VIP +3.</small>}
-              </div>
-            )}
-            {habitMessage && <p className="toast-message">{habitMessage}</p>}
-          </section>
-        </section>
+        <ProfileScreen
+          profile={profile}
+          subscription={subscription}
+          habitItems={habitItems}
+          todayHabits={todayHabits}
+          completedHabits={completedHabits}
+          nextXp={nextXp}
+          levelProgress={levelProgress}
+          marking={marking}
+          habitMessage={habitMessage}
+          settingsOpen={settingsOpen}
+          editingCode={editingCode}
+          draftTitle={draftTitle}
+          draftIcon={draftIcon}
+          draftCaption={draftCaption}
+          newHabitTitle={newHabitTitle}
+          newHabitIcon={newHabitIcon}
+          newHabitCaption={newHabitCaption}
+          habitAction={habitAction}
+          customHabitCount={customHabitCount}
+          customHabitLimit={customHabitLimit}
+          canAddHabit={canAddHabit}
+          onOpenLeaderboard={openLeaderboard}
+          onToggleSettings={() => setSettingsOpen((value) => !value)}
+          onMarkHabit={handleHabit}
+          onSaveHabit={saveHabitTitle}
+          onDeleteHabit={deleteHabit}
+          onAddHabit={addHabit}
+          setEditingCode={setEditingCode}
+          setDraftTitle={setDraftTitle}
+          setDraftIcon={setDraftIcon}
+          setDraftCaption={setDraftCaption}
+          setNewHabitTitle={setNewHabitTitle}
+          setNewHabitIcon={setNewHabitIcon}
+          setNewHabitCaption={setNewHabitCaption}
+        />
       )}
 
       {activeTab === 'progress' && (
