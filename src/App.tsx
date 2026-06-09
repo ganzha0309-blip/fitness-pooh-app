@@ -151,6 +151,7 @@ function App() {
   const [progressLoading, setProgressLoading] = useState(false);
   const [progressSaving, setProgressSaving] = useState(false);
   const [deletingProgressId, setDeletingProgressId] = useState<string | null>(null);
+  const [progressFormOpen, setProgressFormOpen] = useState(false);
   const [progressForm, setProgressForm] = useState<ProgressForm>({
     weight: '',
     waist: '',
@@ -399,6 +400,7 @@ function App() {
       if (!response.ok || !result.ok) throw new Error(result.detail || 'Не удалось сохранить замер.');
       setProgress({ entries: result.entries, latest: result.latest, changes: result.changes });
       setProgressForm({ weight: '', waist: '', chest: '', arm: '', thigh: '', note: '' });
+      setProgressFormOpen(false);
       setProgressMessage('Замер сохранен.');
     } catch (err) {
       setProgressMessage(err instanceof Error ? err.message : 'Не удалось сохранить замер.');
@@ -619,6 +621,15 @@ function App() {
             <p className="eyebrow">Замеры тела</p>
             <h2>Следи за массой и объемами</h2>
             <p>Добавляй замеры раз в неделю, чтобы видеть реальный прогресс, а не гадать по ощущениям.</p>
+            <button
+              className="new-progress-button"
+              onClick={() => {
+                setProgressMessage('');
+                setProgressFormOpen(true);
+              }}
+            >
+              Новый замер
+            </button>
           </div>
 
           <section className="progress-card">
@@ -662,45 +673,6 @@ function App() {
 
           <section className="progress-card">
             <div className="section-title">
-              <h3>Новый замер</h3>
-            </div>
-            <div className="progress-form">
-              {[
-                ['weight', 'Вес, кг'],
-                ['waist', 'Талия, см'],
-                ['chest', 'Грудь, см'],
-                ['arm', 'Рука, см'],
-                ['thigh', 'Бедро, см'],
-              ].map(([key, label]) => (
-                <label key={key}>
-                  <span>{label}</span>
-                  <input
-                    inputMode="decimal"
-                    type="number"
-                    step="0.1"
-                    value={progressForm[key as keyof ProgressForm]}
-                    onChange={(event) => setProgressForm((prev) => ({ ...prev, [key]: event.target.value }))}
-                  />
-                </label>
-              ))}
-              <label className="progress-note">
-                <span>Комментарий</span>
-                <input
-                  maxLength={160}
-                  value={progressForm.note}
-                  onChange={(event) => setProgressForm((prev) => ({ ...prev, note: event.target.value }))}
-                  placeholder="Например: после тренировки, утром натощак"
-                />
-              </label>
-              <button className="save-progress-button" disabled={progressSaving} onClick={saveProgress}>
-                {progressSaving ? 'Сохраняем...' : 'Сохранить замер'}
-              </button>
-            </div>
-            {progressMessage && <p className="toast-message">{progressMessage}</p>}
-          </section>
-
-          <section className="progress-card">
-            <div className="section-title">
               <h3>История</h3>
               <span>{progress?.entries?.length || 0}</span>
             </div>
@@ -720,6 +692,7 @@ function App() {
               {!progress?.entries?.length && <p className="top-empty">История появится после первого замера.</p>}
             </div>
           </section>
+          {progressMessage && <p className="toast-message">{progressMessage}</p>}
         </section>
       )}
 
@@ -748,6 +721,50 @@ function App() {
                 </article>
               );
             })}
+          </div>
+        </section>
+      )}
+
+      {progressFormOpen && (
+        <section className="top-overlay">
+          <div className="top-sheet progress-entry-sheet">
+            <div className="section-title">
+              <h3>Новый замер</h3>
+              <button className="ghost-button" onClick={() => setProgressFormOpen(false)}>Закрыть</button>
+            </div>
+            <div className="progress-form progress-form-sheet">
+              {[
+                ['weight', 'Вес, кг'],
+                ['waist', 'Талия, см'],
+                ['chest', 'Грудь, см'],
+                ['arm', 'Рука, см'],
+                ['thigh', 'Бедро, см'],
+              ].map(([key, label]) => (
+                <label key={key}>
+                  <span>{label}</span>
+                  <input
+                    inputMode="decimal"
+                    type="number"
+                    step="0.1"
+                    value={progressForm[key as keyof ProgressForm]}
+                    onChange={(event) => setProgressForm((prev) => ({ ...prev, [key]: event.target.value }))}
+                  />
+                </label>
+              ))}
+              <label className="progress-note">
+                <span>Комментарий</span>
+                <input
+                  maxLength={160}
+                  value={progressForm.note}
+                  onChange={(event) => setProgressForm((prev) => ({ ...prev, note: event.target.value }))}
+                  placeholder="Например: утром натощак"
+                />
+              </label>
+              <button className="save-progress-button" disabled={progressSaving} onClick={saveProgress}>
+                {progressSaving ? 'Сохраняем...' : 'Сохранить замер'}
+              </button>
+            </div>
+            {progressMessage && <p className="toast-message">{progressMessage}</p>}
           </div>
         </section>
       )}
