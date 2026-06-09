@@ -152,6 +152,7 @@ function App() {
   const [progressSaving, setProgressSaving] = useState(false);
   const [deletingProgressId, setDeletingProgressId] = useState<string | null>(null);
   const [progressFormOpen, setProgressFormOpen] = useState(false);
+  const [progressDeleteTarget, setProgressDeleteTarget] = useState<ProgressEntry | null>(null);
   const [progressForm, setProgressForm] = useState<ProgressForm>({
     weight: '',
     waist: '',
@@ -684,7 +685,7 @@ function App() {
                     {entry.note && <small>{entry.note}</small>}
                   </div>
                   <span>{entry.weight ? `${entry.weight} кг` : 'без веса'}</span>
-                  <button disabled={deletingProgressId === entry.id} onClick={() => deleteProgress(entry.id)}>
+                  <button disabled={deletingProgressId === entry.id} onClick={() => setProgressDeleteTarget(entry)}>
                     {deletingProgressId === entry.id ? '...' : 'Удалить'}
                   </button>
                 </article>
@@ -765,6 +766,32 @@ function App() {
               </button>
             </div>
             {progressMessage && <p className="toast-message">{progressMessage}</p>}
+          </div>
+        </section>
+      )}
+
+      {progressDeleteTarget && (
+        <section className="top-overlay">
+          <div className="top-sheet confirm-sheet">
+            <div className="section-title">
+              <h3>Удалить замер?</h3>
+            </div>
+            <p className="confirm-text">
+              Замер от {progressDeleteTarget.date} будет удален из истории. Это действие нельзя отменить.
+            </p>
+            <div className="confirm-actions">
+              <button className="ghost-button" onClick={() => setProgressDeleteTarget(null)}>Отмена</button>
+              <button
+                className="danger-button"
+                disabled={deletingProgressId === progressDeleteTarget.id}
+                onClick={async () => {
+                  await deleteProgress(progressDeleteTarget.id);
+                  setProgressDeleteTarget(null);
+                }}
+              >
+                {deletingProgressId === progressDeleteTarget.id ? 'Удаляем...' : 'Удалить'}
+              </button>
+            </div>
           </div>
         </section>
       )}

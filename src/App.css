@@ -550,6 +550,34 @@
   padding-bottom: 18px;
 }
 
+.confirm-sheet {
+  max-width: 420px;
+}
+
+.confirm-text {
+  margin: 8px 0 16px;
+  color: #c8bfd8;
+}
+
+.confirm-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.danger-button {
+  height: 34px;
+  border: 0;
+  border-radius: 8px;
+  background: rgba(244, 63, 94, 0.2);
+  color: #fda4af;
+  font-weight: 900;
+}
+
+.danger-button:disabled {
+  opacity: 0.58;
+}
+
 .save-progress-button:disabled {
   opacity: 0.58;
 }
