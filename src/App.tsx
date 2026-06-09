@@ -1,174 +1,45 @@
 import { useEffect, useMemo, useState } from 'react';
 import './App.css';
 
-const API_URL = 'https://fitness-pooh-api.onrender.com';
-
-type Tab = 'profile' | 'progress' | 'challenges' | 'trainings';
-type Subscription = 'free' | 'base' | 'pro' | 'vip';
-
-type HabitItem = {
-  code: string;
-  icon: string;
-  title: string;
-  caption?: string;
-  is_default?: boolean;
-};
-
-type Profile = {
-  name: string;
-  username?: string | null;
-  xp: number;
-  streak: number;
-  subscription: Subscription | string;
-  subscription_until?: string | null;
-  last_action_date?: string | null;
-  level: string;
-  habits?: Record<string, number>;
-  habit_items?: HabitItem[];
-  custom_habit_limit?: number;
-  custom_habit_count?: number;
-};
-
-type Training = {
-  id: string | number;
-  name?: string;
-  title?: string;
-  description?: string;
-  level?: Subscription | string;
-  subscription?: Subscription | string;
-  category?: string;
-  duration?: string;
-};
-
-type LeaderboardUser = {
-  place: number;
-  name: string;
-  username?: string | null;
-  xp: number;
-  streak: number;
-  level: string;
-};
-
-type LevelInfo = {
-  xp: number;
-  title: string;
-};
-
-type Leaderboard = {
-  top: LeaderboardUser[];
-  levels: LevelInfo[];
-};
-
-type ProgressEntry = {
-  id: string;
-  date: string;
-  created_at?: string;
-  weight?: number | null;
-  waist?: number | null;
-  chest?: number | null;
-  arm?: number | null;
-  thigh?: number | null;
-  note?: string;
-};
-
-type ProgressData = {
-  entries: ProgressEntry[];
-  latest?: ProgressEntry | null;
-  changes?: Record<string, number>;
-};
-
-type Challenge = {
-  id: string;
-  title: string;
-  description: string;
-  duration_days: number;
-  reward_xp: number;
-  required_subscription: Subscription | string;
-  participants_count: number;
-  available: boolean;
-  joined: boolean;
-  participant_status: string;
-  progress_days: number;
-  done_today: boolean;
-};
-
-type ProgressForm = {
-  weight: string;
-  waist: string;
-  chest: string;
-  arm: string;
-  thigh: string;
-  note: string;
-};
-
-type ProgressMetric = 'weight' | 'waist' | 'chest' | 'arm' | 'thigh';
-
-const progressMetrics: { key: ProgressMetric; label: string; unit: string }[] = [
-  { key: 'weight', label: 'Вес', unit: 'кг' },
-  { key: 'waist', label: 'Талия', unit: 'см' },
-  { key: 'chest', label: 'Грудь', unit: 'см' },
-  { key: 'arm', label: 'Рука', unit: 'см' },
-  { key: 'thigh', label: 'Бедро', unit: 'см' },
-];
-
-const defaultHabits: HabitItem[] = [
-  { code: 'water', icon: '💧', title: 'Вода', caption: '2 литра за день', is_default: true },
-  { code: 'workout', icon: '🏋️', title: 'Тренировка', caption: 'Любая активность', is_default: true },
-  { code: 'sleep', icon: '😴', title: 'Сон', caption: '7-8 часов', is_default: true },
-];
-
-const subscriptionRank: Record<string, number> = {
-  free: 0,
-  base: 1,
-  pro: 2,
-  vip: 3,
-};
-
-const subscriptionLabels: Record<string, string> = {
-  free: 'Free',
-  base: 'Base',
-  pro: 'PRO',
-  vip: 'VIP',
-};
-
-const tabLabels: Record<Tab, string> = {
-  profile: 'Профиль',
-  progress: 'Прогресс',
-  challenges: 'Челленджи',
-  trainings: 'Тренировки',
-};
-
-const navigationItems: { tab: Tab; icon: string; label: string; caption: string }[] = [
-  { tab: 'profile', icon: '👤', label: 'Профиль', caption: 'XP, уровень и привычки' },
-  { tab: 'progress', icon: '📈', label: 'Прогресс', caption: 'Замеры и аналитика' },
-  { tab: 'challenges', icon: '🏁', label: 'Челленджи', caption: 'Испытания и награды' },
-  { tab: 'trainings', icon: '🏋️', label: 'Тренировки', caption: 'Планы и упражнения' },
-];
-
-function todayIso() {
-  const date = new Date();
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-}
-
-function normalizeSubscription(value?: string) {
-  const lower = (value || 'free').toLowerCase();
-  return subscriptionRank[lower] === undefined ? 'free' : lower;
-}
-
-function canOpen(userSubscription: string, requiredSubscription: string) {
-  return subscriptionRank[normalizeSubscription(userSubscription)] >= subscriptionRank[normalizeSubscription(requiredSubscription)];
-}
-
-function nextLevelXp(xp: number) {
-  return Math.max(Math.ceil((xp + 1) / 100) * 100, 100);
-}
+import {
+  addHabit as addHabitApi,
+  addProgress as addProgressApi,
+  deleteHabit as deleteHabitApi,
+  deleteProgress as deleteProgressApi,
+  editHabit,
+  fetchChallenges,
+  fetchLeaderboard,
+  fetchProfile,
+  fetchProgress,
+  fetchTrainings,
+  markHabit,
+  updateChallenge,
+} from './api/client';
+import { TopMenu } from './components/TopMenu';
+import {
+  canOpen,
+  defaultHabits,
+  nextLevelXp,
+  normalizeSubscription,
+  progressMetrics,
+  subscriptionLabels,
+  todayIso,
+} from './constants';
+import type {
+  Challenge,
+  Leaderboard,
+  Profile,
+  ProgressData,
+  ProgressEntry,
+  ProgressForm,
+  ProgressMetric,
+  Tab,
+  Training,
+} from './types';
+import { buildProgressChart } from './utils/progressChart';
 
 function App() {
   const [activeTab, setActiveTab] = useState<Tab>('profile');
-  const [menuOpen, setMenuOpen] = useState(false);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [trainings, setTrainings] = useState<Training[]>([]);
   const [loading, setLoading] = useState(true);
@@ -219,30 +90,10 @@ function App() {
   const nextXp = nextLevelXp(profile?.xp || 0);
   const levelProgress = Math.min(100, Math.round(((profile?.xp || 0) % 100) || (profile?.xp ? 100 : 0)));
   const selectedMetricInfo = progressMetrics.find((metric) => metric.key === selectedMetric) || progressMetrics[0];
-  const progressChart = useMemo(() => {
-    const entries = (progress?.entries || [])
-      .filter((entry) => typeof entry[selectedMetric] === 'number')
-      .slice()
-      .sort((left, right) => {
-        const leftTime = left.created_at || left.date;
-        const rightTime = right.created_at || right.date;
-        return leftTime.localeCompare(rightTime);
-      })
-      .slice(-8);
-    if (!entries.length) {
-      return { points: [] };
-    }
-    const weights = entries.map((entry) => Number(entry[selectedMetric]));
-    const min = Math.min(...weights);
-    const max = Math.max(...weights);
-    const range = Math.max(max - min, 1);
-    const points = entries.map((entry, index) => {
-      const x = entries.length === 1 ? 50 : 8 + (index / (entries.length - 1)) * 84;
-      const y = 82 - ((Number(entry[selectedMetric]) - min) / range) * 64;
-      return { x, y, entry };
-    });
-    return { points };
-  }, [progress, selectedMetric]);
+  const progressChart = useMemo(
+    () => buildProgressChart(progress, selectedMetric),
+    [progress, selectedMetric],
+  );
 
   const completedHabits = useMemo(
     () => habitItems.filter((habit) => todayHabits[habit.code]).length,
@@ -250,29 +101,7 @@ function App() {
   );
 
   const loadProfile = async (initData: string) => {
-    let response: Response;
-    try {
-      response = await fetch(`${API_URL}/auth`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ initData }),
-      });
-    } catch {
-      throw new Error(`API недоступен: ${API_URL}`);
-    }
-
-    if (!response.ok) {
-      let detail = '';
-      try {
-        const data = await response.json();
-        detail = data.detail ? ` ${data.detail}` : '';
-      } catch {
-        detail = '';
-      }
-      throw new Error(`Не удалось загрузить профиль. HTTP ${response.status}.${detail}`);
-    }
-
-    const data = await response.json();
+    const data = await fetchProfile(initData);
     setProfile(data);
     return data;
   };
@@ -298,10 +127,7 @@ function App() {
 
         await loadProfile(initData);
 
-        const trainingsResponse = await fetch(`${API_URL}/trainings`);
-        if (trainingsResponse.ok) {
-          setTrainings(await trainingsResponse.json());
-        }
+        setTrainings(await fetchTrainings());
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Ошибка соединения.');
       } finally {
@@ -318,21 +144,16 @@ function App() {
     setMarking(habit);
     setHabitMessage('');
     try {
-      const response = await fetch(`${API_URL}/habit`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ initData: tg.initData, habit }),
-      });
-      const result = await response.json();
+      const result = await markHabit(tg.initData, habit);
 
       if (result.ok) {
         setProfile((prev) =>
           prev
             ? {
                 ...prev,
-                xp: result.new_xp,
-                streak: result.new_streak,
-                level: result.level,
+                xp: result.new_xp ?? prev.xp,
+                streak: result.new_streak ?? prev.streak,
+                level: result.level ?? prev.level,
                 last_action_date: todayIso(),
                 habits: result.habits || { ...(prev.last_action_date === todayIso() ? prev.habits : {}), [habit]: 1 },
                 habit_items: result.habit_items || prev.habit_items,
@@ -355,20 +176,13 @@ function App() {
     if (!tg?.initData || draftTitle.trim().length < 2) return;
     setHabitAction(code);
     try {
-      const response = await fetch(`${API_URL}/habit/edit`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          initData: tg.initData,
-          code,
-          title: draftTitle.trim(),
-          icon: draftIcon.trim() || '✅',
-          caption: draftCaption.trim(),
-        }),
+      const updatedProfile = await editHabit(tg.initData, {
+        code,
+        title: draftTitle.trim(),
+        icon: draftIcon.trim() || '✅',
+        caption: draftCaption.trim(),
       });
-      const result = await response.json();
-      if (!response.ok || !result.ok) throw new Error(result.detail || 'Не удалось сохранить привычку.');
-      setProfile(result.profile);
+      setProfile(updatedProfile);
       setEditingCode(null);
       setDraftTitle('');
       setDraftIcon('✅');
@@ -385,19 +199,12 @@ function App() {
     if (!tg?.initData || newHabitTitle.trim().length < 2 || !canAddHabit) return;
     setHabitAction('add');
     try {
-      const response = await fetch(`${API_URL}/habit/add`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          initData: tg.initData,
-          title: newHabitTitle.trim(),
-          icon: newHabitIcon.trim() || '✅',
-          caption: newHabitCaption.trim(),
-        }),
+      const updatedProfile = await addHabitApi(tg.initData, {
+        title: newHabitTitle.trim(),
+        icon: newHabitIcon.trim() || '✅',
+        caption: newHabitCaption.trim(),
       });
-      const result = await response.json();
-      if (!response.ok || !result.ok) throw new Error(result.detail || 'Лимит привычек для подписки достигнут.');
-      setProfile(result.profile);
+      setProfile(updatedProfile);
       setNewHabitTitle('');
       setNewHabitIcon('✅');
       setNewHabitCaption('');
@@ -413,14 +220,7 @@ function App() {
     if (!tg?.initData) return;
     setHabitAction(code);
     try {
-      const response = await fetch(`${API_URL}/habit/delete`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ initData: tg.initData, code }),
-      });
-      const result = await response.json();
-      if (!response.ok || !result.ok) throw new Error(result.detail || 'Не удалось удалить привычку.');
-      setProfile(result.profile);
+      setProfile(await deleteHabitApi(tg.initData, code));
       setHabitMessage('Привычка удалена.');
     } catch (err) {
       setHabitMessage(err instanceof Error ? err.message : 'Не удалось удалить привычку.');
@@ -435,9 +235,7 @@ function App() {
 
     setLeaderboardLoading(true);
     try {
-      const response = await fetch(`${API_URL}/leaderboard`);
-      if (!response.ok) throw new Error('Не удалось загрузить топ.');
-      setLeaderboard(await response.json());
+      setLeaderboard(await fetchLeaderboard());
     } catch {
       setHabitMessage('Не удалось загрузить топ по XP.');
     } finally {
@@ -449,13 +247,7 @@ function App() {
     if (!tg?.initData) return;
     setProgressLoading(true);
     try {
-      const response = await fetch(`${API_URL}/progress`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ initData: tg.initData }),
-      });
-      if (!response.ok) throw new Error('Не удалось загрузить прогресс.');
-      setProgress(await response.json());
+      setProgress(await fetchProgress(tg.initData));
     } catch {
       setProgressMessage('Не удалось загрузить прогресс.');
     } finally {
@@ -467,14 +259,7 @@ function App() {
     if (!tg?.initData) return;
     setChallengesLoading(true);
     try {
-      const response = await fetch(`${API_URL}/challenges`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ initData: tg.initData }),
-      });
-      if (!response.ok) throw new Error('Не удалось загрузить челленджи.');
-      const result = await response.json();
-      setChallenges(result.challenges || []);
+      setChallenges(await fetchChallenges(tg.initData));
     } catch (err) {
       setChallengeMessage(err instanceof Error ? err.message : 'Не удалось загрузить челленджи.');
     } finally {
@@ -487,14 +272,7 @@ function App() {
     setChallengeAction(challengeId);
     setChallengeMessage('');
     try {
-      const response = await fetch(`${API_URL}/challenge/${action}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ initData: tg.initData, challenge_id: challengeId }),
-      });
-      const result = await response.json();
-      if (!response.ok || !result.ok) throw new Error(result.detail || 'Не удалось обновить челлендж.');
-      setChallenges(result.challenges || []);
+      setChallenges(await updateChallenge(tg.initData, challengeId, action));
       setChallengeMessage(action === 'join' ? 'Ты участвуешь в челлендже.' : 'День засчитан.');
       if (action === 'check') {
         await loadProfile(tg.initData);
@@ -519,14 +297,7 @@ function App() {
         thigh: progressForm.thigh ? Number(progressForm.thigh) : null,
         note: progressForm.note,
       };
-      const response = await fetch(`${API_URL}/progress/add`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-      const result = await response.json();
-      if (!response.ok || !result.ok) throw new Error(result.detail || 'Не удалось сохранить замер.');
-      setProgress({ entries: result.entries, latest: result.latest, changes: result.changes });
+      setProgress(await addProgressApi(tg.initData, body));
       setProgressForm({ weight: '', waist: '', chest: '', arm: '', thigh: '', note: '' });
       setProgressFormOpen(false);
       setProgressMessage('Замер сохранен.');
@@ -541,14 +312,7 @@ function App() {
     if (!tg?.initData) return;
     setDeletingProgressId(entryId);
     try {
-      const response = await fetch(`${API_URL}/progress/delete`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ initData: tg.initData, entry_id: entryId }),
-      });
-      const result = await response.json();
-      if (!response.ok || !result.ok) throw new Error(result.detail || 'Не удалось удалить замер.');
-      setProgress({ entries: result.entries, latest: result.latest, changes: result.changes });
+      setProgress(await deleteProgressApi(tg.initData, entryId));
       setProgressDetail(null);
       setProgressMessage('Замер удален.');
     } catch (err) {
@@ -591,64 +355,12 @@ function App() {
 
   return (
     <main className="app-shell">
-      <section className="top-panel">
-        <div className="top-title">
-          <p className="eyebrow">Fitness Pooh</p>
-          <h1>{tabLabels[activeTab]}</h1>
-        </div>
-        <button
-          className="menu-button"
-          type="button"
-          aria-label="Открыть меню"
-          onClick={() => setMenuOpen(true)}
-        >
-          <span />
-          <span />
-          <span />
-        </button>
-      </section>
-
-      {menuOpen && (
-        <section className="nav-overlay" onClick={() => setMenuOpen(false)}>
-          <aside className="nav-drawer" onClick={(event) => event.stopPropagation()}>
-            <div className="nav-profile">
-              <div className="avatar">{profile.name?.slice(0, 1) || 'P'}</div>
-              <div>
-                <strong>{profile.name}</strong>
-                <span>{subscriptionLabels[subscription]} · {profile.level}</span>
-              </div>
-              <button
-                className="nav-close"
-                type="button"
-                aria-label="Закрыть меню"
-                onClick={() => setMenuOpen(false)}
-              >
-                ×
-              </button>
-            </div>
-
-            <nav className="nav-list">
-              {navigationItems.map((item) => (
-                <button
-                  key={item.tab}
-                  type="button"
-                  className={activeTab === item.tab ? 'active' : ''}
-                  onClick={() => {
-                    setActiveTab(item.tab);
-                    setMenuOpen(false);
-                  }}
-                >
-                  <span className="nav-icon">{item.icon}</span>
-                  <span>
-                    <strong>{item.label}</strong>
-                    <small>{item.caption}</small>
-                  </span>
-                </button>
-              ))}
-            </nav>
-          </aside>
-        </section>
-      )}
+      <TopMenu
+        activeTab={activeTab}
+        profile={profile}
+        subscription={subscription}
+        onTabChange={setActiveTab}
+      />
 
       {activeTab === 'profile' && (
         <section className="screen">
