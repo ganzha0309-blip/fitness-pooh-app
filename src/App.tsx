@@ -133,7 +133,8 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [marking, setMarking] = useState<string | null>(null);
-  const [message, setMessage] = useState('');
+  const [habitMessage, setHabitMessage] = useState('');
+  const [progressMessage, setProgressMessage] = useState('');
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [editingCode, setEditingCode] = useState<string | null>(null);
   const [draftTitle, setDraftTitle] = useState('');
@@ -228,7 +229,7 @@ function App() {
     if (!profile || !tg?.initData) return;
 
     setMarking(habit);
-    setMessage('');
+    setHabitMessage('');
     try {
       const response = await fetch(`${API_URL}/habit`, {
         method: 'POST',
@@ -251,13 +252,13 @@ function App() {
               }
             : prev,
         );
-        setMessage(result.message || '+10 XP в копилку режима.');
+        setHabitMessage(result.message || '+10 XP в копилку режима.');
       } else {
         await loadProfile(tg.initData);
-        setMessage(result.message || 'Эта привычка уже отмечена сегодня.');
+        setHabitMessage(result.message || 'Эта привычка уже отмечена сегодня.');
       }
     } catch {
-      setMessage('Не удалось связаться с сервером.');
+      setHabitMessage('Не удалось связаться с сервером.');
     } finally {
       setMarking(null);
     }
@@ -285,9 +286,9 @@ function App() {
       setDraftTitle('');
       setDraftIcon('✅');
       setDraftCaption('');
-      setMessage('Привычка обновлена.');
+      setHabitMessage('Привычка обновлена.');
     } catch (err) {
-      setMessage(err instanceof Error ? err.message : 'Не удалось сохранить привычку.');
+      setHabitMessage(err instanceof Error ? err.message : 'Не удалось сохранить привычку.');
     } finally {
       setHabitAction(null);
     }
@@ -313,9 +314,9 @@ function App() {
       setNewHabitTitle('');
       setNewHabitIcon('✅');
       setNewHabitCaption('');
-      setMessage('Привычка добавлена.');
+      setHabitMessage('Привычка добавлена.');
     } catch (err) {
-      setMessage(err instanceof Error ? err.message : 'Не удалось добавить привычку.');
+      setHabitMessage(err instanceof Error ? err.message : 'Не удалось добавить привычку.');
     } finally {
       setHabitAction(null);
     }
@@ -333,9 +334,9 @@ function App() {
       const result = await response.json();
       if (!response.ok || !result.ok) throw new Error(result.detail || 'Не удалось удалить привычку.');
       setProfile(result.profile);
-      setMessage('Привычка удалена.');
+      setHabitMessage('Привычка удалена.');
     } catch (err) {
-      setMessage(err instanceof Error ? err.message : 'Не удалось удалить привычку.');
+      setHabitMessage(err instanceof Error ? err.message : 'Не удалось удалить привычку.');
     } finally {
       setHabitAction(null);
     }
@@ -351,7 +352,7 @@ function App() {
       if (!response.ok) throw new Error('Не удалось загрузить топ.');
       setLeaderboard(await response.json());
     } catch {
-      setMessage('Не удалось загрузить топ по XP.');
+      setHabitMessage('Не удалось загрузить топ по XP.');
     } finally {
       setLeaderboardLoading(false);
     }
@@ -369,7 +370,7 @@ function App() {
       if (!response.ok) throw new Error('Не удалось загрузить прогресс.');
       setProgress(await response.json());
     } catch {
-      setMessage('Не удалось загрузить прогресс.');
+      setProgressMessage('Не удалось загрузить прогресс.');
     } finally {
       setProgressLoading(false);
     }
@@ -397,9 +398,9 @@ function App() {
       if (!response.ok || !result.ok) throw new Error(result.detail || 'Не удалось сохранить замер.');
       setProgress({ entries: result.entries, latest: result.latest, changes: result.changes });
       setProgressForm({ weight: '', waist: '', chest: '', arm: '', thigh: '', note: '' });
-      setMessage('Замер сохранен.');
+      setProgressMessage('Замер сохранен.');
     } catch (err) {
-      setMessage(err instanceof Error ? err.message : 'Не удалось сохранить замер.');
+      setProgressMessage(err instanceof Error ? err.message : 'Не удалось сохранить замер.');
     } finally {
       setProgressSaving(false);
     }
@@ -586,7 +587,7 @@ function App() {
                 {!canAddHabit && <small>Free может менять базовые привычки. Base +1, PRO +2, VIP +3.</small>}
               </div>
             )}
-            {message && <p className="toast-message">{message}</p>}
+            {habitMessage && <p className="toast-message">{habitMessage}</p>}
           </section>
         </section>
       )}
@@ -674,7 +675,7 @@ function App() {
                 {progressSaving ? 'Сохраняем...' : 'Сохранить замер'}
               </button>
             </div>
-            {message && <p className="toast-message">{message}</p>}
+            {progressMessage && <p className="toast-message">{progressMessage}</p>}
           </section>
 
           <section className="progress-card">
