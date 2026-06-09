@@ -476,8 +476,10 @@
 
 .progress-form label {
   min-width: 0;
+  width: 100%;
   display: grid;
   gap: 6px;
+  overflow: hidden;
 }
 
 .progress-note,
@@ -486,9 +488,11 @@
 }
 
 .progress-form input {
-  width: 100%;
+  display: block;
+  width: calc(100% - 8px);
   max-width: 100%;
   min-width: 0;
+  margin-right: 8px;
   height: 42px;
   padding: 0 12px;
   border: 1px solid rgba(255, 255, 255, 0.12);
