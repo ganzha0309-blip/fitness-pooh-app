@@ -455,6 +455,7 @@ function App() {
       const result = await response.json();
       if (!response.ok || !result.ok) throw new Error(result.detail || 'Не удалось удалить замер.');
       setProgress({ entries: result.entries, latest: result.latest, changes: result.changes });
+      setProgressDetail(null);
       setProgressMessage('Замер удален.');
     } catch (err) {
       setProgressMessage(err instanceof Error ? err.message : 'Не удалось удалить замер.');
