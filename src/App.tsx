@@ -538,10 +538,10 @@ function App() {
   }, [activeTab, progress]);
 
   useEffect(() => {
-    if (activeTab === 'challenges' && !challenges.length) {
+    if (activeTab === 'challenges') {
       loadChallenges();
     }
-  }, [activeTab, challenges.length]);
+  }, [activeTab]);
 
   if (loading) {
     return (

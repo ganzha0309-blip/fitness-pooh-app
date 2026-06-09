@@ -2,7 +2,7 @@
   min-height: 100svh;
   max-width: 520px;
   margin: 0 auto;
-  padding: 18px 16px 96px;
+  padding: 18px 16px 142px;
   color: #f5efff;
   box-sizing: border-box;
 }
@@ -904,10 +904,11 @@
   left: 50%;
   bottom: 14px;
   width: min(488px, calc(100% - 28px));
-  height: 68px;
+  height: 112px;
   padding: 8px;
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: repeat(2, 1fr);
   gap: 8px;
   transform: translateX(-50%);
   border: 1px solid rgba(255, 255, 255, 0.12);
