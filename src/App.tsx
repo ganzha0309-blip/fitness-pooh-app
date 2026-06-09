@@ -85,6 +85,16 @@ type ProgressForm = {
   note: string;
 };
 
+type ProgressMetric = 'weight' | 'waist' | 'chest' | 'arm' | 'thigh';
+
+const progressMetrics: { key: ProgressMetric; label: string; unit: string }[] = [
+  { key: 'weight', label: 'Вес', unit: 'кг' },
+  { key: 'waist', label: 'Талия', unit: 'см' },
+  { key: 'chest', label: 'Грудь', unit: 'см' },
+  { key: 'arm', label: 'Рука', unit: 'см' },
+  { key: 'thigh', label: 'Бедро', unit: 'см' },
+];
+
 const defaultHabits: HabitItem[] = [
   { code: 'water', icon: '💧', title: 'Вода', caption: '2 литра за день', is_default: true },
   { code: 'workout', icon: '🏋️', title: 'Тренировка', caption: 'Любая активность', is_default: true },
@@ -153,6 +163,8 @@ function App() {
   const [deletingProgressId, setDeletingProgressId] = useState<string | null>(null);
   const [progressFormOpen, setProgressFormOpen] = useState(false);
   const [progressDeleteTarget, setProgressDeleteTarget] = useState<ProgressEntry | null>(null);
+  const [progressDetail, setProgressDetail] = useState<ProgressEntry | null>(null);
+  const [selectedMetric, setSelectedMetric] = useState<ProgressMetric>('weight');
   const [progressForm, setProgressForm] = useState<ProgressForm>({
     weight: '',
     waist: '',
@@ -171,26 +183,27 @@ function App() {
   const canAddHabit = customHabitCount < customHabitLimit;
   const nextXp = nextLevelXp(profile?.xp || 0);
   const levelProgress = Math.min(100, Math.round(((profile?.xp || 0) % 100) || (profile?.xp ? 100 : 0)));
+  const selectedMetricInfo = progressMetrics.find((metric) => metric.key === selectedMetric) || progressMetrics[0];
   const progressChart = useMemo(() => {
     const entries = (progress?.entries || [])
-      .filter((entry) => typeof entry.weight === 'number')
+      .filter((entry) => typeof entry[selectedMetric] === 'number')
       .slice()
       .sort((left, right) => left.date.localeCompare(right.date))
       .slice(-8);
     if (!entries.length) {
       return { points: [] };
     }
-    const weights = entries.map((entry) => Number(entry.weight));
+    const weights = entries.map((entry) => Number(entry[selectedMetric]));
     const min = Math.min(...weights);
     const max = Math.max(...weights);
     const range = Math.max(max - min, 1);
     const points = entries.map((entry, index) => {
       const x = entries.length === 1 ? 50 : 8 + (index / (entries.length - 1)) * 84;
-      const y = 82 - ((Number(entry.weight) - min) / range) * 64;
+      const y = 82 - ((Number(entry[selectedMetric]) - min) / range) * 64;
       return { x, y, entry };
     });
     return { points };
-  }, [progress]);
+  }, [progress, selectedMetric]);
 
   const completedHabits = useMemo(
     () => habitItems.filter((habit) => todayHabits[habit.code]).length,
@@ -694,10 +707,21 @@ function App() {
 
           <section className="progress-card">
             <div className="section-title">
-              <h3>График веса</h3>
+              <h3>Аналитика</h3>
               <span>Base+</span>
             </div>
             <div className={`progress-chart-card ${canOpen(subscription, 'base') ? '' : 'locked'}`}>
+              <div className="metric-tabs">
+                {progressMetrics.map((metric) => (
+                  <button
+                    className={selectedMetric === metric.key ? 'active' : ''}
+                    key={metric.key}
+                    onClick={() => setSelectedMetric(metric.key)}
+                  >
+                    {metric.label}
+                  </button>
+                ))}
+              </div>
               <div className="chart-preview">
                 {progressChart.points.length >= 2 ? (
                   <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
@@ -710,7 +734,7 @@ function App() {
                 )}
                 <div className="chart-dots">
                   {progressChart.points.map((point) => (
-                    <span key={`${point.entry.date}-${point.entry.weight}`} style={{ left: `${point.x}%`, top: `${point.y}%` }} />
+                    <span key={`${point.entry.date}-${point.entry[selectedMetric]}`} style={{ left: `${point.x}%`, top: `${point.y}%` }} />
                   ))}
                 </div>
               </div>
@@ -718,15 +742,15 @@ function App() {
                 <span>{progressChart.points[0]?.entry.date || 'нет данных'}</span>
                 <strong>
                   {progressChart.points.length
-                    ? `${progressChart.points[progressChart.points.length - 1].entry.weight} кг`
+                    ? `${progressChart.points[progressChart.points.length - 1].entry[selectedMetric]} ${selectedMetricInfo.unit}`
                     : 'Добавь 2 замера'}
                 </strong>
                 <span>{progressChart.points[progressChart.points.length - 1]?.entry.date || ''}</span>
               </div>
               {!canOpen(subscription, 'base') && (
                 <div className="chart-lock">
-                  <strong>График доступен с Base</strong>
-                  <span>Повышай подписку, чтобы видеть динамику веса по замерам.</span>
+                  <strong>Аналитика доступна с Base</strong>
+                  <span>С Base открываются графики веса и всех объемов по истории замеров.</span>
                 </div>
               )}
             </div>
@@ -739,15 +763,13 @@ function App() {
             </div>
             <div className="progress-history">
               {(progress?.entries || []).slice(0, 8).map((entry) => (
-                <article key={entry.id}>
+                <article className="progress-history-item" key={entry.id} onClick={() => setProgressDetail(entry)}>
                   <div>
                     <strong>{entry.date}</strong>
                     {entry.note && <small>{entry.note}</small>}
                   </div>
                   <span>{entry.weight ? `${entry.weight} кг` : 'без веса'}</span>
-                  <button disabled={deletingProgressId === entry.id} onClick={() => setProgressDeleteTarget(entry)}>
-                    {deletingProgressId === entry.id ? '...' : 'Удалить'}
-                  </button>
+                  <b>Открыть</b>
                 </article>
               ))}
               {!progress?.entries?.length && <p className="top-empty">История появится после первого замера.</p>}
@@ -826,6 +848,47 @@ function App() {
               </button>
             </div>
             {progressMessage && <p className="toast-message">{progressMessage}</p>}
+          </div>
+        </section>
+      )}
+
+      {progressDetail && (
+        <section className="top-overlay">
+          <div className="top-sheet progress-detail-sheet">
+            <div className="section-title">
+              <h3>Замер от {progressDetail.date}</h3>
+              <button className="ghost-button" onClick={() => setProgressDetail(null)}>Закрыть</button>
+            </div>
+            <div className="measure-grid">
+              {progressMetrics.map((metric) => (
+                <article key={metric.key}>
+                  <span>{metric.label}</span>
+                  <strong>
+                    {progressDetail[metric.key] ?? '-'} {metric.unit}
+                  </strong>
+                </article>
+              ))}
+              <article>
+                <span>Дата</span>
+                <strong>{progressDetail.date}</strong>
+              </article>
+            </div>
+            {progressDetail.note && (
+              <div className="progress-detail-note">
+                <span>Комментарий</span>
+                <p>{progressDetail.note}</p>
+              </div>
+            )}
+            <button
+              className="danger-button progress-detail-delete"
+              disabled={deletingProgressId === progressDetail.id}
+              onClick={() => {
+                setProgressDeleteTarget(progressDetail);
+                setProgressDetail(null);
+              }}
+            >
+              {deletingProgressId === progressDetail.id ? 'Удаляем...' : 'Удалить замер'}
+            </button>
           </div>
         </section>
       )}
