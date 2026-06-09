@@ -15,6 +15,7 @@ import {
   markHabit,
   updateChallenge,
 } from './api/client';
+import { LeaderboardModal } from './components/LeaderboardModal';
 import { ProgressModals } from './components/ProgressModals';
 import { TopMenu } from './components/TopMenu';
 import {
@@ -462,46 +463,12 @@ function App() {
         }}
       />
 
-      {leaderboardOpen && (
-        <section className="top-overlay">
-          <div className="top-sheet">
-            <div className="section-title">
-              <h3>Топ Fitness Pooh</h3>
-              <button className="ghost-button" onClick={() => setLeaderboardOpen(false)}>Закрыть</button>
-            </div>
-
-            {leaderboardLoading ? (
-              <p className="top-empty">Загружаем рейтинг...</p>
-            ) : (
-              <>
-                <div className="top-list">
-                  {(leaderboard?.top || []).map((user) => (
-                    <article className="top-user" key={`${user.place}-${user.name}`}>
-                      <span className="top-place">#{user.place}</span>
-                      <div>
-                        <strong>{user.name}</strong>
-                        <small>{user.level} · {user.streak} дн.</small>
-                      </div>
-                      <b>{user.xp} XP</b>
-                    </article>
-                  ))}
-                  {!leaderboard?.top?.length && <p className="top-empty">Пока нет участников рейтинга.</p>}
-                </div>
-
-                <div className="levels-list">
-                  <h3>Уровни</h3>
-                  {(leaderboard?.levels || []).map((level) => (
-                    <div className="level-item" key={level.xp}>
-                      <span>{level.title}</span>
-                      <b>{level.xp} XP</b>
-                    </div>
-                  ))}
-                </div>
-              </>
-            )}
-          </div>
-        </section>
-      )}
+      <LeaderboardModal
+        open={leaderboardOpen}
+        loading={leaderboardLoading}
+        leaderboard={leaderboard}
+        onClose={() => setLeaderboardOpen(false)}
+      />
 
     </main>
   );
