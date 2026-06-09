@@ -131,6 +131,20 @@ const subscriptionLabels: Record<string, string> = {
   vip: 'VIP',
 };
 
+const tabLabels: Record<Tab, string> = {
+  profile: 'Профиль',
+  progress: 'Прогресс',
+  challenges: 'Челленджи',
+  trainings: 'Тренировки',
+};
+
+const navigationItems: { tab: Tab; icon: string; label: string; caption: string }[] = [
+  { tab: 'profile', icon: '👤', label: 'Профиль', caption: 'XP, уровень и привычки' },
+  { tab: 'progress', icon: '📈', label: 'Прогресс', caption: 'Замеры и аналитика' },
+  { tab: 'challenges', icon: '🏁', label: 'Челленджи', caption: 'Испытания и награды' },
+  { tab: 'trainings', icon: '🏋️', label: 'Тренировки', caption: 'Планы и упражнения' },
+];
+
 function todayIso() {
   const date = new Date();
   const year = date.getFullYear();
@@ -154,6 +168,7 @@ function nextLevelXp(xp: number) {
 
 function App() {
   const [activeTab, setActiveTab] = useState<Tab>('profile');
+  const [menuOpen, setMenuOpen] = useState(false);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [trainings, setTrainings] = useState<Training[]>([]);
   const [loading, setLoading] = useState(true);
@@ -577,12 +592,63 @@ function App() {
   return (
     <main className="app-shell">
       <section className="top-panel">
-        <div>
+        <div className="top-title">
           <p className="eyebrow">Fitness Pooh</p>
-          <h1>{activeTab === 'profile' ? 'Профиль' : activeTab === 'progress' ? 'Прогресс' : activeTab === 'challenges' ? 'Челленджи' : 'Тренировки'}</h1>
+          <h1>{tabLabels[activeTab]}</h1>
         </div>
-        <div className="avatar">{profile.name?.slice(0, 1) || 'P'}</div>
+        <button
+          className="menu-button"
+          type="button"
+          aria-label="Открыть меню"
+          onClick={() => setMenuOpen(true)}
+        >
+          <span />
+          <span />
+          <span />
+        </button>
       </section>
+
+      {menuOpen && (
+        <section className="nav-overlay" onClick={() => setMenuOpen(false)}>
+          <aside className="nav-drawer" onClick={(event) => event.stopPropagation()}>
+            <div className="nav-profile">
+              <div className="avatar">{profile.name?.slice(0, 1) || 'P'}</div>
+              <div>
+                <strong>{profile.name}</strong>
+                <span>{subscriptionLabels[subscription]} · {profile.level}</span>
+              </div>
+              <button
+                className="nav-close"
+                type="button"
+                aria-label="Закрыть меню"
+                onClick={() => setMenuOpen(false)}
+              >
+                ×
+              </button>
+            </div>
+
+            <nav className="nav-list">
+              {navigationItems.map((item) => (
+                <button
+                  key={item.tab}
+                  type="button"
+                  className={activeTab === item.tab ? 'active' : ''}
+                  onClick={() => {
+                    setActiveTab(item.tab);
+                    setMenuOpen(false);
+                  }}
+                >
+                  <span className="nav-icon">{item.icon}</span>
+                  <span>
+                    <strong>{item.label}</strong>
+                    <small>{item.caption}</small>
+                  </span>
+                </button>
+              ))}
+            </nav>
+          </aside>
+        </section>
+      )}
 
       {activeTab === 'profile' && (
         <section className="screen">
@@ -1117,24 +1183,6 @@ function App() {
         </section>
       )}
 
-      <nav className="bottom-nav">
-        <button className={activeTab === 'profile' ? 'active' : ''} onClick={() => setActiveTab('profile')}>
-          <span>👤</span>
-          Профиль
-        </button>
-        <button className={activeTab === 'progress' ? 'active' : ''} onClick={() => setActiveTab('progress')}>
-          <span>📈</span>
-          Прогресс
-        </button>
-        <button className={activeTab === 'challenges' ? 'active' : ''} onClick={() => setActiveTab('challenges')}>
-          <span>🏁</span>
-          Челленджи
-        </button>
-        <button className={activeTab === 'trainings' ? 'active' : ''} onClick={() => setActiveTab('trainings')}>
-          <span>🏋️</span>
-          Тренировки
-        </button>
-      </nav>
     </main>
   );
 }
