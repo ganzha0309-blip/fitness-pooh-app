@@ -469,6 +469,8 @@
 }
 
 .progress-form {
+  width: calc(100% - 14px);
+  margin: 0 auto;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: 10px;
