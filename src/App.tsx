@@ -62,6 +62,7 @@ type Leaderboard = {
 type ProgressEntry = {
   id: string;
   date: string;
+  created_at?: string;
   weight?: number | null;
   waist?: number | null;
   chest?: number | null;
@@ -188,7 +189,11 @@ function App() {
     const entries = (progress?.entries || [])
       .filter((entry) => typeof entry[selectedMetric] === 'number')
       .slice()
-      .sort((left, right) => left.date.localeCompare(right.date))
+      .sort((left, right) => {
+        const leftTime = left.created_at || left.date;
+        const rightTime = right.created_at || right.date;
+        return leftTime.localeCompare(rightTime);
+      })
       .slice(-8);
     if (!entries.length) {
       return { points: [] };
@@ -733,16 +738,18 @@ function App() {
                 ) : (
                   <div className="chart-empty-line" />
                 )}
-                <div className="chart-dots">
-                  {progressChart.points.map((point) => (
-                    <span key={`${point.entry.date}-${point.entry[selectedMetric]}`} style={{ left: `${point.x}%`, top: `${point.y}%` }} />
-                  ))}
-                </div>
+                {progressChart.points.length >= 2 && (
+                  <div className="chart-dots">
+                    {progressChart.points.map((point) => (
+                      <span key={`${point.entry.date}-${point.entry[selectedMetric]}`} style={{ left: `${point.x}%`, top: `${point.y}%` }} />
+                    ))}
+                  </div>
+                )}
               </div>
               <div className="chart-meta">
                 <span>{progressChart.points[0]?.entry.date || 'нет данных'}</span>
                 <strong>
-                  {progressChart.points.length
+                  {progressChart.points.length >= 2
                     ? `${progressChart.points[progressChart.points.length - 1].entry[selectedMetric]} ${selectedMetricInfo.unit}`
                     : 'Добавь 2 замера'}
                 </strong>
