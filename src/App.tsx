@@ -171,6 +171,26 @@ function App() {
   const canAddHabit = customHabitCount < customHabitLimit;
   const nextXp = nextLevelXp(profile?.xp || 0);
   const levelProgress = Math.min(100, Math.round(((profile?.xp || 0) % 100) || (profile?.xp ? 100 : 0)));
+  const progressChart = useMemo(() => {
+    const entries = (progress?.entries || [])
+      .filter((entry) => typeof entry.weight === 'number')
+      .slice()
+      .sort((left, right) => left.date.localeCompare(right.date))
+      .slice(-8);
+    if (!entries.length) {
+      return { points: [] };
+    }
+    const weights = entries.map((entry) => Number(entry.weight));
+    const min = Math.min(...weights);
+    const max = Math.max(...weights);
+    const range = Math.max(max - min, 1);
+    const points = entries.map((entry, index) => {
+      const x = entries.length === 1 ? 50 : (index / (entries.length - 1)) * 100;
+      const y = 82 - ((Number(entry.weight) - min) / range) * 64;
+      return { x, y, entry };
+    });
+    return { points };
+  }, [progress]);
 
   const completedHabits = useMemo(
     () => habitItems.filter((habit) => todayHabits[habit.code]).length,
@@ -670,6 +690,46 @@ function App() {
             ) : (
               <p className="top-empty">Пока нет замеров. Добавь первый ниже.</p>
             )}
+          </section>
+
+          <section className="progress-card">
+            <div className="section-title">
+              <h3>График веса</h3>
+              <span>Base+</span>
+            </div>
+            <div className={`progress-chart-card ${canOpen(subscription, 'base') ? '' : 'locked'}`}>
+              <div className="chart-preview">
+                {progressChart.points.length >= 2 ? (
+                  <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+                    <polyline
+                      points={progressChart.points.map((point) => `${point.x},${point.y}`).join(' ')}
+                    />
+                  </svg>
+                ) : (
+                  <div className="chart-empty-line" />
+                )}
+                <div className="chart-dots">
+                  {progressChart.points.map((point) => (
+                    <span key={`${point.entry.date}-${point.entry.weight}`} style={{ left: `${point.x}%`, top: `${point.y}%` }} />
+                  ))}
+                </div>
+              </div>
+              <div className="chart-meta">
+                <span>{progressChart.points[0]?.entry.date || 'нет данных'}</span>
+                <strong>
+                  {progressChart.points.length
+                    ? `${progressChart.points[progressChart.points.length - 1].entry.weight} кг`
+                    : 'Добавь 2 замера'}
+                </strong>
+                <span>{progressChart.points[progressChart.points.length - 1]?.entry.date || ''}</span>
+              </div>
+              {!canOpen(subscription, 'base') && (
+                <div className="chart-lock">
+                  <strong>График доступен с Base</strong>
+                  <span>Повышай подписку, чтобы видеть динамику веса по замерам.</span>
+                </div>
+              )}
+            </div>
           </section>
 
           <section className="progress-card">
