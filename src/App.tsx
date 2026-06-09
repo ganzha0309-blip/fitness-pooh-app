@@ -3,7 +3,7 @@ import './App.css';
 
 const API_URL = 'https://fitness-pooh-api.onrender.com';
 
-type Tab = 'profile' | 'progress' | 'trainings';
+type Tab = 'profile' | 'progress' | 'challenges' | 'trainings';
 type Subscription = 'free' | 'base' | 'pro' | 'vip';
 
 type HabitItem = {
@@ -75,6 +75,21 @@ type ProgressData = {
   entries: ProgressEntry[];
   latest?: ProgressEntry | null;
   changes?: Record<string, number>;
+};
+
+type Challenge = {
+  id: string;
+  title: string;
+  description: string;
+  duration_days: number;
+  reward_xp: number;
+  required_subscription: Subscription | string;
+  participants_count: number;
+  available: boolean;
+  joined: boolean;
+  participant_status: string;
+  progress_days: number;
+  done_today: boolean;
 };
 
 type ProgressForm = {
@@ -158,6 +173,10 @@ function App() {
   const [leaderboard, setLeaderboard] = useState<Leaderboard | null>(null);
   const [leaderboardOpen, setLeaderboardOpen] = useState(false);
   const [leaderboardLoading, setLeaderboardLoading] = useState(false);
+  const [challenges, setChallenges] = useState<Challenge[]>([]);
+  const [challengesLoading, setChallengesLoading] = useState(false);
+  const [challengeAction, setChallengeAction] = useState<string | null>(null);
+  const [challengeMessage, setChallengeMessage] = useState('');
   const [progress, setProgress] = useState<ProgressData | null>(null);
   const [progressLoading, setProgressLoading] = useState(false);
   const [progressSaving, setProgressSaving] = useState(false);
@@ -417,6 +436,49 @@ function App() {
     }
   };
 
+  const loadChallenges = async () => {
+    if (!tg?.initData) return;
+    setChallengesLoading(true);
+    try {
+      const response = await fetch(`${API_URL}/challenges`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ initData: tg.initData }),
+      });
+      if (!response.ok) throw new Error('Не удалось загрузить челленджи.');
+      const result = await response.json();
+      setChallenges(result.challenges || []);
+    } catch (err) {
+      setChallengeMessage(err instanceof Error ? err.message : 'Не удалось загрузить челленджи.');
+    } finally {
+      setChallengesLoading(false);
+    }
+  };
+
+  const challengeRequest = async (challengeId: string, action: 'join' | 'check') => {
+    if (!tg?.initData) return;
+    setChallengeAction(challengeId);
+    setChallengeMessage('');
+    try {
+      const response = await fetch(`${API_URL}/challenge/${action}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ initData: tg.initData, challenge_id: challengeId }),
+      });
+      const result = await response.json();
+      if (!response.ok || !result.ok) throw new Error(result.detail || 'Не удалось обновить челлендж.');
+      setChallenges(result.challenges || []);
+      setChallengeMessage(action === 'join' ? 'Ты участвуешь в челлендже.' : 'День засчитан.');
+      if (action === 'check') {
+        await loadProfile(tg.initData);
+      }
+    } catch (err) {
+      setChallengeMessage(err instanceof Error ? err.message : 'Не удалось обновить челлендж.');
+    } finally {
+      setChallengeAction(null);
+    }
+  };
+
   const saveProgress = async () => {
     if (!tg?.initData) return;
     setProgressSaving(true);
@@ -475,6 +537,12 @@ function App() {
     }
   }, [activeTab, progress]);
 
+  useEffect(() => {
+    if (activeTab === 'challenges' && !challenges.length) {
+      loadChallenges();
+    }
+  }, [activeTab, challenges.length]);
+
   if (loading) {
     return (
       <main className="app-shell center-state">
@@ -499,7 +567,7 @@ function App() {
       <section className="top-panel">
         <div>
           <p className="eyebrow">Fitness Pooh</p>
-          <h1>{activeTab === 'profile' ? 'Профиль' : activeTab === 'progress' ? 'Прогресс' : 'Тренировки'}</h1>
+          <h1>{activeTab === 'profile' ? 'Профиль' : activeTab === 'progress' ? 'Прогресс' : activeTab === 'challenges' ? 'Челленджи' : 'Тренировки'}</h1>
         </div>
         <div className="avatar">{profile.name?.slice(0, 1) || 'P'}</div>
       </section>
@@ -787,6 +855,75 @@ function App() {
         </section>
       )}
 
+      {activeTab === 'challenges' && (
+        <section className="screen">
+          <div className="training-banner">
+            <p className="eyebrow">Твой доступ: {subscriptionLabels[subscription]}</p>
+            <h2>Челленджи Fitness Pooh</h2>
+            <p>Выбирай цель, вступай и отмечай выполнение каждый день. Закрытые челленджи откроются с подпиской выше.</p>
+            <button className="new-progress-button" onClick={loadChallenges}>
+              Обновить
+            </button>
+          </div>
+
+          <div className="challenge-list">
+            {challengesLoading ? (
+              <p className="top-empty">Загружаем челленджи...</p>
+            ) : (
+              challenges.map((challenge) => {
+                const locked = !challenge.available;
+                const completed = challenge.participant_status === 'completed';
+                const progressPercent = Math.min(100, Math.round((challenge.progress_days / challenge.duration_days) * 100));
+                return (
+                  <article className={`challenge-card ${locked ? 'locked' : ''}`} key={challenge.id}>
+                    <div className="challenge-card-body">
+                      <div className="challenge-card-head">
+                        <span>{subscriptionLabels[normalizeSubscription(challenge.required_subscription)]}</span>
+                        <b>{challenge.participants_count} уч.</b>
+                      </div>
+                      <h3>{challenge.title}</h3>
+                      <p>{challenge.description}</p>
+                      <div className="challenge-meta">
+                        <span>{challenge.duration_days} дн.</span>
+                        <span>{challenge.reward_xp} XP</span>
+                        <span>{challenge.progress_days}/{challenge.duration_days}</span>
+                      </div>
+                      <div className="progress-track challenge-track">
+                        <div style={{ width: `${progressPercent}%` }} />
+                      </div>
+                      {!locked && (
+                        <button
+                          disabled={challengeAction === challenge.id || completed || challenge.done_today}
+                          onClick={() => challengeRequest(challenge.id, challenge.joined ? 'check' : 'join')}
+                        >
+                          {challengeAction === challenge.id
+                            ? '...'
+                            : completed
+                              ? 'Выполнен'
+                              : challenge.done_today
+                                ? 'Сегодня зачтено'
+                                : challenge.joined
+                                  ? 'Отметить день'
+                                  : 'Участвовать'}
+                        </button>
+                      )}
+                    </div>
+                    {locked && (
+                      <div className="challenge-lock">
+                        <strong>Доступно с {subscriptionLabels[normalizeSubscription(challenge.required_subscription)]}</strong>
+                        <span>Челлендж виден заранее, но участие откроется после повышения подписки.</span>
+                      </div>
+                    )}
+                  </article>
+                );
+              })
+            )}
+            {!challengesLoading && !challenges.length && <p className="top-empty">Пока нет активных челленджей.</p>}
+          </div>
+          {challengeMessage && <p className="toast-message">{challengeMessage}</p>}
+        </section>
+      )}
+
       {activeTab === 'trainings' && (
         <section className="screen">
           <div className="training-banner">
@@ -976,6 +1113,10 @@ function App() {
         <button className={activeTab === 'progress' ? 'active' : ''} onClick={() => setActiveTab('progress')}>
           <span>📈</span>
           Прогресс
+        </button>
+        <button className={activeTab === 'challenges' ? 'active' : ''} onClick={() => setActiveTab('challenges')}>
+          <span>🏁</span>
+          Челленджи
         </button>
         <button className={activeTab === 'trainings' ? 'active' : ''} onClick={() => setActiveTab('trainings')}>
           <span>🏋️</span>

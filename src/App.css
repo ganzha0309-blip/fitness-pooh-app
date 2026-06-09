@@ -130,7 +130,7 @@
 
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 10px;
 }
 
@@ -442,6 +442,93 @@
 .training-card.locked button {
   min-width: 42px;
   background: rgba(255, 255, 255, 0.08);
+}
+
+.challenge-list {
+  display: grid;
+  gap: 10px;
+}
+
+.challenge-card {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  background: rgba(20, 14, 32, 0.78);
+}
+
+.challenge-card-body {
+  padding: 16px;
+}
+
+.challenge-card-head,
+.challenge-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.challenge-card-head span,
+.challenge-card-head b,
+.challenge-meta span {
+  color: #c8bfd8;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.challenge-card h3 {
+  margin: 12px 0 7px;
+  color: #ffffff;
+}
+
+.challenge-card p {
+  margin: 0 0 14px;
+  color: #bdb4ca;
+  font-size: 14px;
+}
+
+.challenge-track {
+  margin: 12px 0;
+}
+
+.challenge-card button {
+  width: 100%;
+  height: 40px;
+  border: 0;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #8b5cf6, #d946ef);
+  color: #ffffff;
+  font-weight: 900;
+}
+
+.challenge-card button:disabled {
+  opacity: 0.58;
+}
+
+.challenge-card.locked .challenge-card-body {
+  filter: blur(4px);
+  opacity: 0.58;
+}
+
+.challenge-lock {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  gap: 6px;
+  padding: 18px;
+  text-align: center;
+  background: rgba(18, 11, 31, 0.58);
+}
+
+.challenge-lock strong {
+  color: #ffffff;
+}
+
+.challenge-lock span {
+  color: #c8bfd8;
+  font-size: 13px;
 }
 
 .progress-card {
@@ -835,6 +922,7 @@
   border-radius: 8px;
   background: transparent;
   color: #a9a0b8;
+  font-size: 11px;
   font-weight: 800;
 }
 
