@@ -15,6 +15,7 @@ import {
   markHabit,
   updateChallenge,
 } from './api/client';
+import { ProgressModals } from './components/ProgressModals';
 import { TopMenu } from './components/TopMenu';
 import {
   defaultHabits,
@@ -438,116 +439,28 @@ function App() {
         <TrainingsScreen subscription={subscription} trainings={trainings} />
       )}
 
-      {progressFormOpen && (
-        <section className="top-overlay">
-          <div className="top-sheet progress-entry-sheet">
-            <div className="section-title">
-              <h3>Новый замер</h3>
-              <button className="ghost-button" onClick={() => setProgressFormOpen(false)}>Закрыть</button>
-            </div>
-            <div className="progress-form progress-form-sheet">
-              {[
-                ['weight', 'Вес, кг'],
-                ['waist', 'Талия, см'],
-                ['chest', 'Грудь, см'],
-                ['arm', 'Рука, см'],
-                ['thigh', 'Бедро, см'],
-              ].map(([key, label]) => (
-                <label key={key}>
-                  <span>{label}</span>
-                  <input
-                    inputMode="decimal"
-                    type="number"
-                    step="0.1"
-                    value={progressForm[key as keyof ProgressForm]}
-                    onChange={(event) => setProgressForm((prev) => ({ ...prev, [key]: event.target.value }))}
-                  />
-                </label>
-              ))}
-              <label className="progress-note">
-                <span>Комментарий</span>
-                <input
-                  maxLength={160}
-                  value={progressForm.note}
-                  onChange={(event) => setProgressForm((prev) => ({ ...prev, note: event.target.value }))}
-                  placeholder="Например: утром натощак"
-                />
-              </label>
-              <button className="save-progress-button" disabled={progressSaving} onClick={saveProgress}>
-                {progressSaving ? 'Сохраняем...' : 'Сохранить замер'}
-              </button>
-            </div>
-            {progressMessage && <p className="toast-message">{progressMessage}</p>}
-          </div>
-        </section>
-      )}
-
-      {progressDetail && (
-        <section className="top-overlay">
-          <div className="top-sheet progress-detail-sheet">
-            <div className="section-title">
-              <h3>Замер от {progressDetail.date}</h3>
-              <button className="ghost-button" onClick={() => setProgressDetail(null)}>Закрыть</button>
-            </div>
-            <div className="measure-grid">
-              {progressMetrics.map((metric) => (
-                <article key={metric.key}>
-                  <span>{metric.label}</span>
-                  <strong>
-                    {progressDetail[metric.key] ?? '-'} {metric.unit}
-                  </strong>
-                </article>
-              ))}
-              <article>
-                <span>Дата</span>
-                <strong>{progressDetail.date}</strong>
-              </article>
-            </div>
-            {progressDetail.note && (
-              <div className="progress-detail-note">
-                <span>Комментарий</span>
-                <p>{progressDetail.note}</p>
-              </div>
-            )}
-            <button
-              className="danger-button progress-detail-delete"
-              disabled={deletingProgressId === progressDetail.id}
-              onClick={() => {
-                setProgressDeleteTarget(progressDetail);
-                setProgressDetail(null);
-              }}
-            >
-              {deletingProgressId === progressDetail.id ? 'Удаляем...' : 'Удалить замер'}
-            </button>
-          </div>
-        </section>
-      )}
-
-      {progressDeleteTarget && (
-        <section className="top-overlay">
-          <div className="top-sheet confirm-sheet">
-            <div className="section-title">
-              <h3>Удалить замер?</h3>
-            </div>
-            <p className="confirm-text">
-              Замер от {progressDeleteTarget.date} будет удален из истории. Это действие нельзя отменить.
-            </p>
-            <div className="confirm-actions">
-              <button className="ghost-button" onClick={() => setProgressDeleteTarget(null)}>Отмена</button>
-              <button
-                className="danger-button"
-                disabled={deletingProgressId === progressDeleteTarget.id}
-                onClick={async () => {
-                  await deleteProgress(progressDeleteTarget.id);
-                  setProgressDeleteTarget(null);
-                }}
-              >
-                {deletingProgressId === progressDeleteTarget.id ? 'Удаляем...' : 'Удалить'}
-              </button>
-            </div>
-          </div>
-        </section>
-      )}
+      <ProgressModals
+        formOpen={progressFormOpen}
+        progressForm={progressForm}
+        progressSaving={progressSaving}
+        progressMessage={progressMessage}
+        progressDetail={progressDetail}
+        progressDeleteTarget={progressDeleteTarget}
+        deletingProgressId={deletingProgressId}
+        setProgressForm={setProgressForm}
+        onCloseForm={() => setProgressFormOpen(false)}
+        onSaveProgress={saveProgress}
+        onCloseDetail={() => setProgressDetail(null)}
+        onRequestDelete={(entry) => {
+          setProgressDeleteTarget(entry);
+          setProgressDetail(null);
+        }}
+        onCancelDelete={() => setProgressDeleteTarget(null)}
+        onConfirmDelete={async (entryId) => {
+          await deleteProgress(entryId);
+          setProgressDeleteTarget(null);
+        }}
+      />
 
       {leaderboardOpen && (
         <section className="top-overlay">
