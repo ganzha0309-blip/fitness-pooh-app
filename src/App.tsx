@@ -150,6 +150,7 @@ function App() {
   const [progress, setProgress] = useState<ProgressData | null>(null);
   const [progressLoading, setProgressLoading] = useState(false);
   const [progressSaving, setProgressSaving] = useState(false);
+  const [deletingProgressId, setDeletingProgressId] = useState<string | null>(null);
   const [progressForm, setProgressForm] = useState<ProgressForm>({
     weight: '',
     waist: '',
@@ -403,6 +404,26 @@ function App() {
       setProgressMessage(err instanceof Error ? err.message : 'Не удалось сохранить замер.');
     } finally {
       setProgressSaving(false);
+    }
+  };
+
+  const deleteProgress = async (entryId: string) => {
+    if (!tg?.initData) return;
+    setDeletingProgressId(entryId);
+    try {
+      const response = await fetch(`${API_URL}/progress/delete`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ initData: tg.initData, entry_id: entryId }),
+      });
+      const result = await response.json();
+      if (!response.ok || !result.ok) throw new Error(result.detail || 'Не удалось удалить замер.');
+      setProgress({ entries: result.entries, latest: result.latest, changes: result.changes });
+      setProgressMessage('Замер удален.');
+    } catch (err) {
+      setProgressMessage(err instanceof Error ? err.message : 'Не удалось удалить замер.');
+    } finally {
+      setDeletingProgressId(null);
     }
   };
 
@@ -691,6 +712,9 @@ function App() {
                     {entry.note && <small>{entry.note}</small>}
                   </div>
                   <span>{entry.weight ? `${entry.weight} кг` : 'без веса'}</span>
+                  <button disabled={deletingProgressId === entry.id} onClick={() => deleteProgress(entry.id)}>
+                    {deletingProgressId === entry.id ? '...' : 'Удалить'}
+                  </button>
                 </article>
               ))}
               {!progress?.entries?.length && <p className="top-empty">История появится после первого замера.</p>}
