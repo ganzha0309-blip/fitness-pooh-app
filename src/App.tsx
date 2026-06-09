@@ -704,13 +704,15 @@ function App() {
                     <polyline
                       points={progressChart.points.map((point) => `${point.x},${point.y}`).join(' ')}
                     />
-                    {progressChart.points.map((point) => (
-                      <circle key={`${point.entry.date}-${point.entry.weight}`} cx={point.x} cy={point.y} r="2.6" />
-                    ))}
                   </svg>
                 ) : (
                   <div className="chart-empty-line" />
                 )}
+                <div className="chart-dots">
+                  {progressChart.points.map((point) => (
+                    <span key={`${point.entry.date}-${point.entry.weight}`} style={{ left: `${point.x}%`, top: `${point.y}%` }} />
+                  ))}
+                </div>
               </div>
               <div className="chart-meta">
                 <span>{progressChart.points[0]?.entry.date || 'нет данных'}</span>
