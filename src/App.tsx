@@ -25,6 +25,8 @@ import {
   subscriptionLabels,
   todayIso,
 } from './constants';
+import { ChallengesScreen } from './screens/ChallengesScreen';
+import { TrainingsScreen } from './screens/TrainingsScreen';
 import type {
   Challenge,
   Leaderboard,
@@ -646,101 +648,19 @@ function App() {
       )}
 
       {activeTab === 'challenges' && (
-        <section className="screen">
-          <div className="training-banner">
-            <p className="eyebrow">Твой доступ: {subscriptionLabels[subscription]}</p>
-            <h2>Челленджи Fitness Pooh</h2>
-            <p>Выбирай цель, вступай и отмечай выполнение каждый день. Закрытые челленджи откроются с подпиской выше.</p>
-            <button className="new-progress-button" onClick={loadChallenges}>
-              Обновить
-            </button>
-          </div>
-
-          <div className="challenge-list">
-            {challengesLoading ? (
-              <p className="top-empty">Загружаем челленджи...</p>
-            ) : (
-              challenges.map((challenge) => {
-                const locked = !challenge.available;
-                const completed = challenge.participant_status === 'completed';
-                const progressPercent = Math.min(100, Math.round((challenge.progress_days / challenge.duration_days) * 100));
-                return (
-                  <article className={`challenge-card ${locked ? 'locked' : ''}`} key={challenge.id}>
-                    <div className="challenge-card-body">
-                      <div className="challenge-card-head">
-                        <span>{subscriptionLabels[normalizeSubscription(challenge.required_subscription)]}</span>
-                        <b>{challenge.participants_count} уч.</b>
-                      </div>
-                      <h3>{challenge.title}</h3>
-                      <p>{challenge.description}</p>
-                      <div className="challenge-meta">
-                        <span>{challenge.duration_days} дн.</span>
-                        <span>{challenge.reward_xp} XP</span>
-                        <span>{challenge.progress_days}/{challenge.duration_days}</span>
-                      </div>
-                      <div className="progress-track challenge-track">
-                        <div style={{ width: `${progressPercent}%` }} />
-                      </div>
-                      {!locked && (
-                        <button
-                          disabled={challengeAction === challenge.id || completed || challenge.done_today}
-                          onClick={() => challengeRequest(challenge.id, challenge.joined ? 'check' : 'join')}
-                        >
-                          {challengeAction === challenge.id
-                            ? '...'
-                            : completed
-                              ? 'Выполнен'
-                              : challenge.done_today
-                                ? 'Сегодня зачтено'
-                                : challenge.joined
-                                  ? 'Отметить день'
-                                  : 'Участвовать'}
-                        </button>
-                      )}
-                    </div>
-                    {locked && (
-                      <div className="challenge-lock">
-                        <strong>Доступно с {subscriptionLabels[normalizeSubscription(challenge.required_subscription)]}</strong>
-                        <span>Челлендж виден заранее, но участие откроется после повышения подписки.</span>
-                      </div>
-                    )}
-                  </article>
-                );
-              })
-            )}
-            {!challengesLoading && !challenges.length && <p className="top-empty">Пока нет активных челленджей.</p>}
-          </div>
-          {challengeMessage && <p className="toast-message">{challengeMessage}</p>}
-        </section>
+        <ChallengesScreen
+          subscription={subscription}
+          challenges={challenges}
+          loading={challengesLoading}
+          actionId={challengeAction}
+          message={challengeMessage}
+          onRefresh={loadChallenges}
+          onChallengeAction={challengeRequest}
+        />
       )}
 
       {activeTab === 'trainings' && (
-        <section className="screen">
-          <div className="training-banner">
-            <p className="eyebrow">Твой доступ: {subscriptionLabels[subscription]}</p>
-            <h2>Выбирай тренировку под режим</h2>
-            <p>Закрытые программы откроются после повышения подписки.</p>
-          </div>
-
-          <div className="training-list">
-            {(trainings.length ? trainings : fallbackTrainings).map((training) => {
-              const requiredSubscription = normalizeSubscription(training.subscription || training.level);
-              const available = canOpen(subscription, requiredSubscription);
-              return (
-                <article className={`training-card ${available ? '' : 'locked'}`} key={training.id}>
-                  <div>
-                    <span className="training-meta">
-                      {training.category || 'Программа'} · {subscriptionLabels[requiredSubscription]}
-                    </span>
-                    <h3>{training.title || training.name}</h3>
-                    <p>{training.description || 'Тренировка будет доступна внутри программы Fitness Pooh.'}</p>
-                  </div>
-                  <button>{available ? 'Открыть' : '🔒'}</button>
-                </article>
-              );
-            })}
-          </div>
-        </section>
+        <TrainingsScreen subscription={subscription} trainings={trainings} />
       )}
 
       {progressFormOpen && (
@@ -898,32 +818,5 @@ function App() {
     </main>
   );
 }
-
-const fallbackTrainings: Training[] = [
-  {
-    id: 'morning',
-    title: 'Утренняя зарядка',
-    description: 'Легкий старт дня, мобилизация суставов и дыхание.',
-    subscription: 'free',
-    category: 'Дом',
-    duration: '10 мин',
-  },
-  {
-    id: 'back',
-    title: 'Разминка для спины',
-    description: 'Подходит после сидячего дня и перед основной тренировкой.',
-    subscription: 'free',
-    category: 'Мобилити',
-    duration: '12 мин',
-  },
-  {
-    id: 'mass-a',
-    title: 'Массонабор: тренировка А',
-    description: 'База для прогресса в силе и объеме.',
-    subscription: 'pro',
-    category: 'Зал',
-    duration: '55 мин',
-  },
-];
 
 export default App;

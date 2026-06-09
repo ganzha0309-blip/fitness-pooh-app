@@ -1,4 +1,4 @@
-import type { HabitItem, ProgressMetric, Tab } from './types';
+import type { HabitItem, ProgressMetric, Tab, Training } from './types';
 
 export const progressMetrics: { key: ProgressMetric; label: string; unit: string }[] = [
   { key: 'weight', label: 'Вес', unit: 'кг' },
@@ -40,6 +40,33 @@ export const navigationItems: { tab: Tab; icon: string; label: string; caption: 
   { tab: 'progress', icon: '📈', label: 'Прогресс', caption: 'Замеры и аналитика' },
   { tab: 'challenges', icon: '🏁', label: 'Челленджи', caption: 'Испытания и награды' },
   { tab: 'trainings', icon: '🏋️', label: 'Тренировки', caption: 'Планы и упражнения' },
+];
+
+export const fallbackTrainings: Training[] = [
+  {
+    id: 'morning',
+    title: 'Утренняя зарядка',
+    description: 'Легкий старт дня, мобилизация суставов и дыхание.',
+    subscription: 'free',
+    category: 'Дом',
+    duration: '10 мин',
+  },
+  {
+    id: 'back',
+    title: 'Разминка для спины',
+    description: 'Подходит после сидячего дня и перед основной тренировкой.',
+    subscription: 'free',
+    category: 'Мобилити',
+    duration: '12 мин',
+  },
+  {
+    id: 'mass-a',
+    title: 'Массонабор: тренировка А',
+    description: 'База для прогресса в силе и объеме.',
+    subscription: 'pro',
+    category: 'Зал',
+    duration: '55 мин',
+  },
 ];
 
 export function todayIso() {
