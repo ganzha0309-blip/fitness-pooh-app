@@ -185,7 +185,7 @@ function App() {
     const max = Math.max(...weights);
     const range = Math.max(max - min, 1);
     const points = entries.map((entry, index) => {
-      const x = entries.length === 1 ? 50 : (index / (entries.length - 1)) * 100;
+      const x = entries.length === 1 ? 50 : 8 + (index / (entries.length - 1)) * 84;
       const y = 82 - ((Number(entry.weight) - min) / range) * 64;
       return { x, y, entry };
     });
@@ -704,15 +704,13 @@ function App() {
                     <polyline
                       points={progressChart.points.map((point) => `${point.x},${point.y}`).join(' ')}
                     />
+                    {progressChart.points.map((point) => (
+                      <circle key={`${point.entry.date}-${point.entry.weight}`} cx={point.x} cy={point.y} r="2.6" />
+                    ))}
                   </svg>
                 ) : (
                   <div className="chart-empty-line" />
                 )}
-                <div className="chart-dots">
-                  {progressChart.points.map((point) => (
-                    <span key={`${point.entry.date}-${point.entry.weight}`} style={{ left: `${point.x}%`, top: `${point.y}%` }} />
-                  ))}
-                </div>
               </div>
               <div className="chart-meta">
                 <span>{progressChart.points[0]?.entry.date || 'нет данных'}</span>

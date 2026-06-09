@@ -668,15 +668,11 @@
   filter: drop-shadow(0 0 8px rgba(217, 70, 239, 0.55));
 }
 
-.chart-dots span {
-  position: absolute;
-  z-index: 2;
-  width: 8px;
-  height: 8px;
-  transform: translate(-50%, -50%);
-  border: 2px solid #ffffff;
-  border-radius: 999px;
-  background: #a855f7;
+.chart-preview circle {
+  fill: #a855f7;
+  stroke: #ffffff;
+  stroke-width: 1.2;
+  vector-effect: non-scaling-stroke;
 }
 
 .chart-empty-line {
@@ -785,12 +781,14 @@
   align-items: end;
   justify-items: center;
   padding: 18px 14px;
+  overflow: hidden;
   background: rgba(3, 2, 6, 0.68);
   backdrop-filter: blur(10px);
 }
 
 .top-sheet {
-  width: 100%;
+  box-sizing: border-box;
+  width: min(100%, 520px);
   max-width: 520px;
   max-height: min(82svh, 720px);
   margin: 0;
@@ -870,6 +868,43 @@
 .top-empty {
   padding: 12px;
   color: #a9a0b8;
+}
+
+.progress-entry-sheet {
+  width: min(100%, 420px);
+}
+
+.progress-form.progress-form-sheet {
+  gap: 13px;
+}
+
+.progress-form.progress-form-sheet label {
+  min-height: 0;
+  padding: 0;
+  align-content: start;
+  gap: 7px;
+  overflow: visible;
+  background: transparent;
+}
+
+.progress-form.progress-form-sheet span {
+  display: block;
+  padding-left: 2px;
+  font-weight: 800;
+}
+
+.progress-form.progress-form-sheet input {
+  width: min(180px, 100%);
+  height: 38px;
+  padding: 0 12px;
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.07);
+  font-size: 17px;
+}
+
+.progress-form.progress-form-sheet .progress-note input {
+  width: 100%;
 }
 
 @keyframes spin {
