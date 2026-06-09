@@ -435,6 +435,7 @@
 
 .progress-card {
   padding: 16px;
+  overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 8px;
   background: rgba(20, 14, 32, 0.78);
@@ -469,7 +470,7 @@
 
 .progress-form {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
   gap: 10px;
 }
 
@@ -486,6 +487,7 @@
 
 .progress-form input {
   width: 100%;
+  max-width: 100%;
   min-width: 0;
   height: 42px;
   padding: 0 12px;
@@ -503,6 +505,12 @@
   background: linear-gradient(135deg, #8b5cf6, #d946ef);
   color: #ffffff;
   font-weight: 900;
+}
+
+@media (min-width: 430px) {
+  .progress-form {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
 }
 
 .save-progress-button:disabled {
