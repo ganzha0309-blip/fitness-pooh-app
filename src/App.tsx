@@ -2,37 +2,24 @@ import { useEffect, useMemo, useState } from 'react';
 import './App.css';
 
 import {
-  addHabit as addHabitApi,
   addProgress as addProgressApi,
-  deleteHabit as deleteHabitApi,
   deleteProgress as deleteProgressApi,
-  editHabit,
   fetchChallenges,
-  fetchLeaderboard,
-  fetchProfile,
   fetchProgress,
   fetchTrainings,
-  markHabit,
   updateChallenge,
 } from './api/client';
 import { LeaderboardModal } from './components/LeaderboardModal';
 import { ProgressModals } from './components/ProgressModals';
 import { TopMenu } from './components/TopMenu';
-import {
-  defaultHabits,
-  nextLevelXp,
-  normalizeSubscription,
-  progressMetrics,
-  todayIso,
-} from './constants';
+import { progressMetrics } from './constants';
+import { useProfile } from './hooks/useProfile';
 import { ChallengesScreen } from './screens/ChallengesScreen';
 import { ProfileScreen } from './screens/ProfileScreen';
 import { ProgressScreen } from './screens/ProgressScreen';
 import { TrainingsScreen } from './screens/TrainingsScreen';
 import type {
   Challenge,
-  Leaderboard,
-  Profile,
   ProgressData,
   ProgressEntry,
   ProgressForm,
@@ -44,25 +31,10 @@ import { buildProgressChart } from './utils/progressChart';
 
 function App() {
   const [activeTab, setActiveTab] = useState<Tab>('profile');
-  const [profile, setProfile] = useState<Profile | null>(null);
   const [trainings, setTrainings] = useState<Training[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [marking, setMarking] = useState<string | null>(null);
-  const [habitMessage, setHabitMessage] = useState('');
   const [progressMessage, setProgressMessage] = useState('');
-  const [settingsOpen, setSettingsOpen] = useState(false);
-  const [editingCode, setEditingCode] = useState<string | null>(null);
-  const [draftTitle, setDraftTitle] = useState('');
-  const [draftIcon, setDraftIcon] = useState('✅');
-  const [draftCaption, setDraftCaption] = useState('');
-  const [newHabitTitle, setNewHabitTitle] = useState('');
-  const [newHabitIcon, setNewHabitIcon] = useState('✅');
-  const [newHabitCaption, setNewHabitCaption] = useState('');
-  const [habitAction, setHabitAction] = useState<string | null>(null);
-  const [leaderboard, setLeaderboard] = useState<Leaderboard | null>(null);
-  const [leaderboardOpen, setLeaderboardOpen] = useState(false);
-  const [leaderboardLoading, setLeaderboardLoading] = useState(false);
   const [challenges, setChallenges] = useState<Challenge[]>([]);
   const [challengesLoading, setChallengesLoading] = useState(false);
   const [challengeAction, setChallengeAction] = useState<string | null>(null);
@@ -85,30 +57,53 @@ function App() {
   });
 
   const tg = (window as any).Telegram?.WebApp;
-  const habitItems = profile?.habit_items?.length ? profile.habit_items : defaultHabits;
-  const todayHabits = profile?.last_action_date === todayIso() ? profile?.habits || {} : {};
-  const subscription = normalizeSubscription(profile?.subscription);
-  const customHabitLimit = profile?.custom_habit_limit ?? 0;
-  const customHabitCount = profile?.custom_habit_count ?? habitItems.filter((habit) => !habit.is_default).length;
-  const canAddHabit = customHabitCount < customHabitLimit;
-  const nextXp = nextLevelXp(profile?.xp || 0);
-  const levelProgress = Math.min(100, Math.round(((profile?.xp || 0) % 100) || (profile?.xp ? 100 : 0)));
+  const initData = tg?.initData;
+  const {
+    profile,
+    habitItems,
+    todayHabits,
+    subscription,
+    customHabitLimit,
+    customHabitCount,
+    canAddHabit,
+    nextXp,
+    levelProgress,
+    completedHabits,
+    marking,
+    habitMessage,
+    settingsOpen,
+    editingCode,
+    draftTitle,
+    draftIcon,
+    draftCaption,
+    newHabitTitle,
+    newHabitIcon,
+    newHabitCaption,
+    habitAction,
+    leaderboard,
+    leaderboardOpen,
+    leaderboardLoading,
+    loadProfile,
+    handleHabit,
+    saveHabitTitle,
+    addHabit,
+    deleteHabit,
+    openLeaderboard,
+    setSettingsOpen,
+    setEditingCode,
+    setDraftTitle,
+    setDraftIcon,
+    setDraftCaption,
+    setNewHabitTitle,
+    setNewHabitIcon,
+    setNewHabitCaption,
+    setLeaderboardOpen,
+  } = useProfile(initData);
   const selectedMetricInfo = progressMetrics.find((metric) => metric.key === selectedMetric) || progressMetrics[0];
   const progressChart = useMemo(
     () => buildProgressChart(progress, selectedMetric),
     [progress, selectedMetric],
   );
-
-  const completedHabits = useMemo(
-    () => habitItems.filter((habit) => todayHabits[habit.code]).length,
-    [habitItems, todayHabits],
-  );
-
-  const loadProfile = async (initData: string) => {
-    const data = await fetchProfile(initData);
-    setProfile(data);
-    return data;
-  };
 
   useEffect(() => {
     tg?.ready?.();
@@ -141,111 +136,6 @@ function App() {
 
     init();
   }, [tg]);
-
-  const handleHabit = async (habit: string) => {
-    if (!profile || !tg?.initData) return;
-
-    setMarking(habit);
-    setHabitMessage('');
-    try {
-      const result = await markHabit(tg.initData, habit);
-
-      if (result.ok) {
-        setProfile((prev) =>
-          prev
-            ? {
-                ...prev,
-                xp: result.new_xp ?? prev.xp,
-                streak: result.new_streak ?? prev.streak,
-                level: result.level ?? prev.level,
-                last_action_date: todayIso(),
-                habits: result.habits || { ...(prev.last_action_date === todayIso() ? prev.habits : {}), [habit]: 1 },
-                habit_items: result.habit_items || prev.habit_items,
-              }
-            : prev,
-        );
-        setHabitMessage(result.message || '+10 XP в копилку режима.');
-      } else {
-        await loadProfile(tg.initData);
-        setHabitMessage(result.message || 'Эта привычка уже отмечена сегодня.');
-      }
-    } catch {
-      setHabitMessage('Не удалось связаться с сервером.');
-    } finally {
-      setMarking(null);
-    }
-  };
-
-  const saveHabitTitle = async (code: string) => {
-    if (!tg?.initData || draftTitle.trim().length < 2) return;
-    setHabitAction(code);
-    try {
-      const updatedProfile = await editHabit(tg.initData, {
-        code,
-        title: draftTitle.trim(),
-        icon: draftIcon.trim() || '✅',
-        caption: draftCaption.trim(),
-      });
-      setProfile(updatedProfile);
-      setEditingCode(null);
-      setDraftTitle('');
-      setDraftIcon('✅');
-      setDraftCaption('');
-      setHabitMessage('Привычка обновлена.');
-    } catch (err) {
-      setHabitMessage(err instanceof Error ? err.message : 'Не удалось сохранить привычку.');
-    } finally {
-      setHabitAction(null);
-    }
-  };
-
-  const addHabit = async () => {
-    if (!tg?.initData || newHabitTitle.trim().length < 2 || !canAddHabit) return;
-    setHabitAction('add');
-    try {
-      const updatedProfile = await addHabitApi(tg.initData, {
-        title: newHabitTitle.trim(),
-        icon: newHabitIcon.trim() || '✅',
-        caption: newHabitCaption.trim(),
-      });
-      setProfile(updatedProfile);
-      setNewHabitTitle('');
-      setNewHabitIcon('✅');
-      setNewHabitCaption('');
-      setHabitMessage('Привычка добавлена.');
-    } catch (err) {
-      setHabitMessage(err instanceof Error ? err.message : 'Не удалось добавить привычку.');
-    } finally {
-      setHabitAction(null);
-    }
-  };
-
-  const deleteHabit = async (code: string) => {
-    if (!tg?.initData) return;
-    setHabitAction(code);
-    try {
-      setProfile(await deleteHabitApi(tg.initData, code));
-      setHabitMessage('Привычка удалена.');
-    } catch (err) {
-      setHabitMessage(err instanceof Error ? err.message : 'Не удалось удалить привычку.');
-    } finally {
-      setHabitAction(null);
-    }
-  };
-
-  const openLeaderboard = async () => {
-    setLeaderboardOpen(true);
-    if (leaderboard) return;
-
-    setLeaderboardLoading(true);
-    try {
-      setLeaderboard(await fetchLeaderboard());
-    } catch {
-      setHabitMessage('Не удалось загрузить топ по XP.');
-    } finally {
-      setLeaderboardLoading(false);
-    }
-  };
 
   const loadProgress = async () => {
     if (!tg?.initData) return;
