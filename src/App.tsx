@@ -1,35 +1,24 @@
 import { useEffect, useState } from 'react';
 import './App.css';
 
-import {
-  fetchChallenges,
-  fetchTrainings,
-  updateChallenge,
-} from './api/client';
+import { fetchTrainings } from './api/client';
 import { LeaderboardModal } from './components/LeaderboardModal';
 import { ProgressModals } from './components/ProgressModals';
 import { TopMenu } from './components/TopMenu';
+import { useChallenges } from './hooks/useChallenges';
 import { useProfile } from './hooks/useProfile';
 import { useProgress } from './hooks/useProgress';
 import { ChallengesScreen } from './screens/ChallengesScreen';
 import { ProfileScreen } from './screens/ProfileScreen';
 import { ProgressScreen } from './screens/ProgressScreen';
 import { TrainingsScreen } from './screens/TrainingsScreen';
-import type {
-  Challenge,
-  Tab,
-  Training,
-} from './types';
+import type { Tab, Training } from './types';
 
 function App() {
   const [activeTab, setActiveTab] = useState<Tab>('profile');
   const [trainings, setTrainings] = useState<Training[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [challenges, setChallenges] = useState<Challenge[]>([]);
-  const [challengesLoading, setChallengesLoading] = useState(false);
-  const [challengeAction, setChallengeAction] = useState<string | null>(null);
-  const [challengeMessage, setChallengeMessage] = useState('');
 
   const tg = (window as any).Telegram?.WebApp;
   const initData = tg?.initData;
@@ -97,6 +86,17 @@ function App() {
     setProgressDetail,
     setSelectedMetric,
   } = useProgress(initData);
+  const {
+    challenges,
+    challengesLoading,
+    challengeAction,
+    challengeMessage,
+    loadChallenges,
+    challengeRequest,
+  } = useChallenges({
+    initData,
+    refreshProfile: () => loadProfile(initData),
+  });
 
   useEffect(() => {
     tg?.ready?.();
@@ -129,35 +129,6 @@ function App() {
 
     init();
   }, [tg]);
-
-  const loadChallenges = async () => {
-    if (!tg?.initData) return;
-    setChallengesLoading(true);
-    try {
-      setChallenges(await fetchChallenges(tg.initData));
-    } catch (err) {
-      setChallengeMessage(err instanceof Error ? err.message : 'Не удалось загрузить челленджи.');
-    } finally {
-      setChallengesLoading(false);
-    }
-  };
-
-  const challengeRequest = async (challengeId: string, action: 'join' | 'check') => {
-    if (!tg?.initData) return;
-    setChallengeAction(challengeId);
-    setChallengeMessage('');
-    try {
-      setChallenges(await updateChallenge(tg.initData, challengeId, action));
-      setChallengeMessage(action === 'join' ? 'Ты участвуешь в челлендже.' : 'День засчитан.');
-      if (action === 'check') {
-        await loadProfile(tg.initData);
-      }
-    } catch (err) {
-      setChallengeMessage(err instanceof Error ? err.message : 'Не удалось обновить челлендж.');
-    } finally {
-      setChallengeAction(null);
-    }
-  };
 
   useEffect(() => {
     if (activeTab === 'progress' && !progress) {
