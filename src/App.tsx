@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
 import './App.css';
 
-import { fetchTrainings } from './api/client';
 import { LeaderboardModal } from './components/LeaderboardModal';
 import { ProgressModals } from './components/ProgressModals';
 import { TopMenu } from './components/TopMenu';
+import { useAppBootstrap } from './hooks/useAppBootstrap';
 import { useChallenges } from './hooks/useChallenges';
 import { useProfile } from './hooks/useProfile';
 import { useProgress } from './hooks/useProgress';
@@ -12,16 +12,10 @@ import { ChallengesScreen } from './screens/ChallengesScreen';
 import { ProfileScreen } from './screens/ProfileScreen';
 import { ProgressScreen } from './screens/ProgressScreen';
 import { TrainingsScreen } from './screens/TrainingsScreen';
-import type { Tab, Training } from './types';
+import type { Tab } from './types';
 
 function App() {
   const [activeTab, setActiveTab] = useState<Tab>('profile');
-  const [trainings, setTrainings] = useState<Training[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-
-  const tg = (window as any).Telegram?.WebApp;
-  const initData = tg?.initData;
   const {
     profile,
     habitItems,
@@ -62,7 +56,13 @@ function App() {
     setNewHabitIcon,
     setNewHabitCaption,
     setLeaderboardOpen,
-  } = useProfile(initData);
+  } = useProfile();
+  const {
+    initData,
+    trainings,
+    loading,
+    error,
+  } = useAppBootstrap(loadProfile);
   const {
     progress,
     progressLoading,
@@ -99,38 +99,6 @@ function App() {
   });
 
   useEffect(() => {
-    tg?.ready?.();
-    tg?.expand?.();
-  }, [tg]);
-
-  useEffect(() => {
-    const init = async () => {
-      try {
-        if (!tg) {
-          setError('Открой приложение внутри Telegram.');
-          return;
-        }
-
-        const initData = tg.initData;
-        if (!initData) {
-          setError('Telegram не передал данные авторизации.');
-          return;
-        }
-
-        await loadProfile(initData);
-
-        setTrainings(await fetchTrainings());
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Ошибка соединения.');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    init();
-  }, [tg]);
-
-  useEffect(() => {
     if (activeTab === 'progress' && !progress) {
       loadProgress();
     }
@@ -146,7 +114,7 @@ function App() {
     return (
       <main className="app-shell center-state">
         <div className="loader" />
-        <p>Загружаем Fitness Pooh...</p>
+        <p>{'\u0417\u0430\u0433\u0440\u0443\u0436\u0430\u0435\u043c Fitness Pooh...'}</p>
       </main>
     );
   }
@@ -155,8 +123,8 @@ function App() {
     return (
       <main className="app-shell center-state">
         <div className="error-mark">!</div>
-        <h1>Не получилось открыть Mini App</h1>
-        <p>{error || 'Профиль не найден.'}</p>
+        <h1>{'\u041d\u0435 \u043f\u043e\u043b\u0443\u0447\u0438\u043b\u043e\u0441\u044c \u043e\u0442\u043a\u0440\u044b\u0442\u044c Mini App'}</h1>
+        <p>{error || '\u041f\u0440\u043e\u0444\u0438\u043b\u044c \u043d\u0435 \u043d\u0430\u0439\u0434\u0435\u043d.'}</p>
       </main>
     );
   }
