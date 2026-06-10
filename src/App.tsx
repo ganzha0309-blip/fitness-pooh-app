@@ -1,60 +1,35 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import './App.css';
 
 import {
-  addProgress as addProgressApi,
-  deleteProgress as deleteProgressApi,
   fetchChallenges,
-  fetchProgress,
   fetchTrainings,
   updateChallenge,
 } from './api/client';
 import { LeaderboardModal } from './components/LeaderboardModal';
 import { ProgressModals } from './components/ProgressModals';
 import { TopMenu } from './components/TopMenu';
-import { progressMetrics } from './constants';
 import { useProfile } from './hooks/useProfile';
+import { useProgress } from './hooks/useProgress';
 import { ChallengesScreen } from './screens/ChallengesScreen';
 import { ProfileScreen } from './screens/ProfileScreen';
 import { ProgressScreen } from './screens/ProgressScreen';
 import { TrainingsScreen } from './screens/TrainingsScreen';
 import type {
   Challenge,
-  ProgressData,
-  ProgressEntry,
-  ProgressForm,
-  ProgressMetric,
   Tab,
   Training,
 } from './types';
-import { buildProgressChart } from './utils/progressChart';
 
 function App() {
   const [activeTab, setActiveTab] = useState<Tab>('profile');
   const [trainings, setTrainings] = useState<Training[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [progressMessage, setProgressMessage] = useState('');
   const [challenges, setChallenges] = useState<Challenge[]>([]);
   const [challengesLoading, setChallengesLoading] = useState(false);
   const [challengeAction, setChallengeAction] = useState<string | null>(null);
   const [challengeMessage, setChallengeMessage] = useState('');
-  const [progress, setProgress] = useState<ProgressData | null>(null);
-  const [progressLoading, setProgressLoading] = useState(false);
-  const [progressSaving, setProgressSaving] = useState(false);
-  const [deletingProgressId, setDeletingProgressId] = useState<string | null>(null);
-  const [progressFormOpen, setProgressFormOpen] = useState(false);
-  const [progressDeleteTarget, setProgressDeleteTarget] = useState<ProgressEntry | null>(null);
-  const [progressDetail, setProgressDetail] = useState<ProgressEntry | null>(null);
-  const [selectedMetric, setSelectedMetric] = useState<ProgressMetric>('weight');
-  const [progressForm, setProgressForm] = useState<ProgressForm>({
-    weight: '',
-    waist: '',
-    chest: '',
-    arm: '',
-    thigh: '',
-    note: '',
-  });
 
   const tg = (window as any).Telegram?.WebApp;
   const initData = tg?.initData;
@@ -99,11 +74,29 @@ function App() {
     setNewHabitCaption,
     setLeaderboardOpen,
   } = useProfile(initData);
-  const selectedMetricInfo = progressMetrics.find((metric) => metric.key === selectedMetric) || progressMetrics[0];
-  const progressChart = useMemo(
-    () => buildProgressChart(progress, selectedMetric),
-    [progress, selectedMetric],
-  );
+  const {
+    progress,
+    progressLoading,
+    progressSaving,
+    progressMessage,
+    deletingProgressId,
+    progressFormOpen,
+    progressDeleteTarget,
+    progressDetail,
+    selectedMetric,
+    selectedMetricInfo,
+    progressChart,
+    progressForm,
+    loadProgress,
+    openProgressForm,
+    saveProgress,
+    deleteProgress,
+    setProgressForm,
+    setProgressFormOpen,
+    setProgressDeleteTarget,
+    setProgressDetail,
+    setSelectedMetric,
+  } = useProgress(initData);
 
   useEffect(() => {
     tg?.ready?.();
@@ -137,18 +130,6 @@ function App() {
     init();
   }, [tg]);
 
-  const loadProgress = async () => {
-    if (!tg?.initData) return;
-    setProgressLoading(true);
-    try {
-      setProgress(await fetchProgress(tg.initData));
-    } catch {
-      setProgressMessage('Не удалось загрузить прогресс.');
-    } finally {
-      setProgressLoading(false);
-    }
-  };
-
   const loadChallenges = async () => {
     if (!tg?.initData) return;
     setChallengesLoading(true);
@@ -175,44 +156,6 @@ function App() {
       setChallengeMessage(err instanceof Error ? err.message : 'Не удалось обновить челлендж.');
     } finally {
       setChallengeAction(null);
-    }
-  };
-
-  const saveProgress = async () => {
-    if (!tg?.initData) return;
-    setProgressSaving(true);
-    try {
-      const body = {
-        initData: tg.initData,
-        weight: progressForm.weight ? Number(progressForm.weight) : null,
-        waist: progressForm.waist ? Number(progressForm.waist) : null,
-        chest: progressForm.chest ? Number(progressForm.chest) : null,
-        arm: progressForm.arm ? Number(progressForm.arm) : null,
-        thigh: progressForm.thigh ? Number(progressForm.thigh) : null,
-        note: progressForm.note,
-      };
-      setProgress(await addProgressApi(tg.initData, body));
-      setProgressForm({ weight: '', waist: '', chest: '', arm: '', thigh: '', note: '' });
-      setProgressFormOpen(false);
-      setProgressMessage('Замер сохранен.');
-    } catch (err) {
-      setProgressMessage(err instanceof Error ? err.message : 'Не удалось сохранить замер.');
-    } finally {
-      setProgressSaving(false);
-    }
-  };
-
-  const deleteProgress = async (entryId: string) => {
-    if (!tg?.initData) return;
-    setDeletingProgressId(entryId);
-    try {
-      setProgress(await deleteProgressApi(tg.initData, entryId));
-      setProgressDetail(null);
-      setProgressMessage('Замер удален.');
-    } catch (err) {
-      setProgressMessage(err instanceof Error ? err.message : 'Не удалось удалить замер.');
-    } finally {
-      setDeletingProgressId(null);
     }
   };
 
@@ -305,10 +248,7 @@ function App() {
           selectedMetricUnit={selectedMetricInfo.unit}
           progressChart={progressChart}
           onRefresh={loadProgress}
-          onOpenForm={() => {
-            setProgressMessage('');
-            setProgressFormOpen(true);
-          }}
+          onOpenForm={openProgressForm}
           onSelectMetric={setSelectedMetric}
           onOpenEntry={setProgressDetail}
         />
